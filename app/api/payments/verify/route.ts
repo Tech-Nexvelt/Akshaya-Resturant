@@ -16,8 +16,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Must match the lookup in app/api/orders/create/route.ts. That route reads
+    // NEXT_PUBLIC_RAZORPAY_KEY_ID first — the only one actually set in this
+    // deployment's environment — but this route read the bare RAZORPAY_KEY_ID
+    // only, so keyId was always undefined and every verification 500'd
+    // unconditionally at the config-guard below. Confirmed live 2026-08-23: a
+    // real UPI payment completed on Razorpay's side, the browser callback fired,
+    // and this route failed every single one before it ever reached the gateway
+    // re-check or record_payment_success.
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
-    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID;
 
     if (!keySecret || !keyId) {
       console.error(`[${requestId}] [CRITICAL] Razorpay secrets not configured in environment`);

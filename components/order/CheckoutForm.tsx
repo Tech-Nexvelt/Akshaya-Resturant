@@ -66,7 +66,12 @@ export function CheckoutForm({ onBack, onDone }: CheckoutFormProps) {
         body: JSON.stringify({
           customer_name: name,
           customer_phone: phone,
-          items: lines.map((l) => ({ menu_item_id: l.id, quantity: l.quantity })),
+          // The route reads `item.id` as the catalog SLUG (e.g. "chicken-biryani")
+          // and translates it to a menu_items UUID itself via menuItemUuid() — see
+          // app/api/orders/create/route.ts. Sending it under `menu_item_id` instead
+          // left `raw.id` undefined server-side, so every real cart failed 400
+          // "One or more items are no longer on the menu" (2026-08-23, live report).
+          items: lines.map((l) => ({ id: l.id, quantity: l.quantity })),
           idempotency_key: idempotencyKeyRef.current,
         }),
       });

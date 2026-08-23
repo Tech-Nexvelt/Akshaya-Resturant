@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img">
+<defs>
+<linearGradient id="bg-arjun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fef3c7"/><stop offset="1" stop-color="#fde68a"/></linearGradient>
+<linearGradient id="cloth-arjun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b45309"/><stop offset="1" stop-color="#92400e"/></linearGradient>
+<clipPath id="frame-arjun"><rect width="400" height="400"/></clipPath>
+</defs>
+<g clip-path="url(#frame-arjun)">
+  <rect width="400" height="400" fill="url(#bg-arjun)"/>
+
+  <!-- shoulders / bust -->
+  <path d="M200 268 c-64 0 -116 40 -132 96 -4 14 -6 26 -6 36 h276 c0 -10 -2 -22 -6 -36 -16 -56 -68 -96 -132 -96 z" fill="url(#cloth-arjun)"/>
+  <!-- collar shadow -->
+  <path d="M200 268 c-20 0 -39 4 -55 12 l55 40 55 -40 c-16 -8 -35 -12 -55 -12 z" fill="#92400e" opacity="0.55"/>
+
+  <!-- neck -->
+  <path d="M175 232 h50 v40 c0 14 -50 14 -50 0 z" fill="#9a5f2a"/>
+
+  <!-- head -->
+  <ellipse cx="200" cy="176" rx="66" ry="76" fill="#b87333"/>
+  <!-- ears -->
+  <ellipse cx="134" cy="182" rx="11" ry="15" fill="#9a5f2a"/>
+  <ellipse cx="266" cy="182" rx="11" ry="15" fill="#9a5f2a"/>
+
+  <!-- hair (base cap) -->
+  <path d="M200 96 c-44 0 -70 30 -70 68 0 10 2 20 5 27 3 -22 8 -36 15 -43 14 -14 34 -18 50 -18 16 0 36 4 50 18 7 7 12 21 15 43 3 -7 5 -17 5 -27 0 -38 -26 -68 -70 -68 z" fill="#312620"/>
+
+  <!-- brows -->
+  <path d="M168 164 q14 -8 28 -1" stroke="#1c1512" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M204 163 q14 -7 28 1" stroke="#1c1512" stroke-width="7" fill="none" stroke-linecap="round"/>
+
+  <!-- eyes -->
+  <circle cx="180" cy="184" r="6.5" fill="#1f2937"/>
+  <circle cx="220" cy="184" r="6.5" fill="#1f2937"/>
+  <circle cx="182" cy="182" r="2.2" fill="#ffffff"/>
+  <circle cx="222" cy="182" r="2.2" fill="#ffffff"/>
+
+  <!-- nose + smile -->
+  <path d="M200 192 q-5 12 2 16" stroke="#9a5f2a" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M182 218 q18 15 36 0" stroke="#9a3412" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+  
+  <!-- beard, drawn under the jaw and around the mouth -->
+  <path d="M137 186 c-3 42 22 82 63 82 41 0 66 -40 63 -82 -6 30 -14 48 -26 56 -10 -12 -22 -18 -37 -18 -15 0 -27 6 -37 18 -12 -8 -20 -26 -26 -56 z" fill="#312620"/>
+  <path d="M182 206 q18 -8 36 0" stroke="#312620" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <!-- glasses -->
+  <circle cx="180" cy="184" r="21" fill="none" stroke="#374151" stroke-width="5"/>
+  <circle cx="220" cy="184" r="21" fill="none" stroke="#374151" stroke-width="5"/>
+  <path d="M201 184 h-2" stroke="#374151" stroke-width="5" stroke-linecap="round"/>
+  <path d="M159 181 l-22 -4" stroke="#374151" stroke-width="5" stroke-linecap="round"/>
+  <path d="M241 181 l22 -4" stroke="#374151" stroke-width="5" stroke-linecap="round"/>
+  <!-- shirt placket -->
+  <path d="M200 300 v56" stroke="#92400e" stroke-width="6" stroke-linecap="round"/>
+</g>
+</svg>

@@ -3,26 +3,9 @@ import crypto from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { menuItemUuid } from "@/lib/restaurant-data";
 import { Logger } from "@/lib/observability";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { apiSuccess, apiError } from "@/lib/api-response";
 
-/**
- * Creates an order and its Razorpay counterpart.
- *
- * SECURITY MODEL — the previous version of this route violated all three of these:
- *
- *  1. The client never supplies a price. It sends slug + quantity; `create_order`
- *     re-prices every line from `menu_items` and returns the authoritative total,
- *     and that returned total is the ONLY number sent to Razorpay.
- *  2. The client never supplies a menu_item UUID either. Slugs are translated
- *     through MENU_ITEM_IDS server-side, so an unknown slug is a 400 here rather
- *     than a mismatch inside the RPC.
- *  3. There is no partial success. If the order RPC, the Razorpay call, or the
- *     payments row fails, the response is non-2xx. Previously a failed RPC fell
- *     through to a path that computed the total from client-supplied `item.price`,
- *     invented an `orderId` that was never inserted, charged that amount through
- *     the real Razorpay API, and still answered `{success: true}`.
- */
-
-/** Defence in depth against a cart crafted to be absurd. */
 const MAX_QUANTITY_PER_ITEM = 20;
 const MAX_DISTINCT_ITEMS = 50;
 const MAX_ORDER_VALUE_INR = 100000;
@@ -38,62 +21,53 @@ export async function POST(req: NextRequest) {
   const startedAt = Date.now();
 
   try {
+    // 1. Rate Limiting Guard (10 requests/minute per IP)
+    const clientIp = req.headers.get("x-forwarded-for") || "ip_untraced";
+    const rateLimit = await checkRateLimit(`order_create:${clientIp}`, 10, 60);
+
+    if (!rateLimit.success) {
+      Logger.warn("order.create.rate_limited", "order", { clientIp }, requestId);
+      return apiError("Too many order requests. Please wait a minute.", "RATE_LIMITED", 429, undefined, requestId);
+    }
+
     const body = await req.json();
     const { customer_name, customer_phone, items, idempotency_key } = body;
 
     if (!customer_name || typeof customer_name !== "string" || !customer_name.trim()) {
-      return NextResponse.json({ success: false, error: "Customer name is required" }, { status: 400 });
+      return apiError("Customer name is required", "INVALID_INPUT", 400, undefined, requestId);
     }
 
     const phone = typeof customer_phone === "string" ? customer_phone.trim() : "";
     if (!/^[0-9]{10,13}$/.test(phone.replace(/\D/g, ""))) {
-      return NextResponse.json(
-        { success: false, error: "Valid customer phone number is required" },
-        { status: 400 }
-      );
+      return apiError("Valid customer phone number is required", "INVALID_INPUT", 400, undefined, requestId);
     }
 
     if (!Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ success: false, error: "Cart cannot be empty" }, { status: 400 });
+      return apiError("Cart cannot be empty", "EMPTY_CART", 400, undefined, requestId);
     }
 
     if (items.length > MAX_DISTINCT_ITEMS) {
-      return NextResponse.json({ success: false, error: "Too many items in cart" }, { status: 400 });
+      return apiError("Too many items in cart", "EXCEEDED_ITEM_LIMIT", 400, undefined, requestId);
     }
 
-    // Translate slug -> menu_items UUID and validate quantity. Anything the
-    // catalog does not know about is rejected here; price is ignored entirely.
     const rpcItems: { menu_item_id: string; quantity: number }[] = [];
     for (const raw of items as IncomingItem[]) {
       const slug = typeof raw?.id === "string" ? raw.id : "";
       const uuid = menuItemUuid(slug);
       if (!uuid) {
-        Logger.warn(
-          "order.create.unknown_item",
-          "order",
-          { slug, requestId },
-          requestId
-        );
-        return NextResponse.json(
-          { success: false, error: "One or more items are no longer on the menu" },
-          { status: 400 }
-        );
+        Logger.warn("order.create.unknown_item", "order", { slug }, requestId);
+        return apiError("One or more items are no longer on the menu", "ITEM_NOT_FOUND", 400, undefined, requestId);
       }
 
       const quantity = Number(raw?.quantity ?? 1);
       if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY_PER_ITEM) {
-        return NextResponse.json(
-          { success: false, error: `Quantity must be between 1 and ${MAX_QUANTITY_PER_ITEM}` },
-          { status: 400 }
-        );
+        return apiError(`Quantity must be between 1 and ${MAX_QUANTITY_PER_ITEM}`, "INVALID_QUANTITY", 400, undefined, requestId);
       }
 
       rpcItems.push({ menu_item_id: uuid, quantity });
     }
 
     const clientKey = idempotency_key || crypto.randomUUID();
-
-    // ---- Step 1: the order row. Authoritative pricing happens here. ----
     const supabase = createAdminClient();
 
     const { data: orderData, error: orderErr } = await supabase.rpc("create_order", {
@@ -104,53 +78,24 @@ export async function POST(req: NextRequest) {
     });
 
     if (orderErr || !orderData?.[0]) {
-      Logger.critical(
-        "order.create.rpc_failed",
-        "order",
-        { error: orderErr?.message ?? "create_order returned no row", requestId },
-        requestId,
-        Date.now() - startedAt
-      );
-      return NextResponse.json(
-        { success: false, error: "We could not place your order. Please try again." },
-        { status: 502 }
-      );
+      Logger.critical("order.create.rpc_failed", "order", { error: orderErr?.message }, requestId);
+      return apiError("We could not place your order. Please try again.", "RPC_FAILED", 502, undefined, requestId);
     }
 
     const { order_id: orderId, order_number: orderNumber } = orderData[0];
     const totalAmount = Number(orderData[0].total);
 
     if (!Number.isFinite(totalAmount) || totalAmount <= 0 || totalAmount > MAX_ORDER_VALUE_INR) {
-      Logger.critical(
-        "order.create.implausible_total",
-        "order",
-        { orderId, totalAmount, requestId },
-        requestId
-      );
-      return NextResponse.json(
-        { success: false, error: "We could not place your order. Please try again." },
-        { status: 502 }
-      );
+      Logger.critical("order.create.implausible_total", "order", { orderId, totalAmount }, requestId);
+      return apiError("We could not place your order. Please try again.", "IMPLAUSIBLE_TOTAL", 502, undefined, requestId);
     }
 
-    // ---- Step 2: the Razorpay order, for the server-derived total only. ----
     const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
     if (!keyId || !keySecret) {
-      // Deliberately a hard failure, not a mock id. Returning a fabricated
-      // razorpay_order_id would let the client open a checkout that can never
-      // settle, and the order row would sit unpaid forever.
-      Logger.critical(
-        "order.create.razorpay_unconfigured",
-        "payment",
-        { orderId, requestId },
-        requestId
-      );
-      return NextResponse.json(
-        { success: false, error: "Online payment is temporarily unavailable." },
-        { status: 503 }
-      );
+      Logger.critical("order.create.razorpay_unconfigured", "payment", { orderId }, requestId);
+      return apiError("Online payment is temporarily unavailable.", "GATEWAY_UNCONFIGURED", 503, undefined, requestId);
     }
 
     let razorpayOrderId: string;
@@ -169,35 +114,18 @@ export async function POST(req: NextRequest) {
 
       if (!rzpRes.ok) {
         const detail = await rzpRes.text().catch(() => "<unreadable>");
-        Logger.critical(
-          "order.create.razorpay_rejected",
-          "payment",
-          { orderId, status: rzpRes.status, detail: detail.slice(0, 500), requestId },
-          requestId
-        );
-        return NextResponse.json(
-          { success: false, error: "We could not start your payment. Please try again." },
-          { status: 502 }
-        );
+        Logger.critical("order.create.razorpay_rejected", "payment", { orderId, status: rzpRes.status, detail: detail.slice(0, 500) }, requestId);
+        return apiError("We could not start your payment. Please try again.", "GATEWAY_REJECTED", 502, undefined, requestId);
       }
 
       const rzpOrder = await rzpRes.json();
       if (!rzpOrder?.id) throw new Error("Razorpay response contained no order id");
       razorpayOrderId = rzpOrder.id;
     } catch (rzpErr) {
-      Logger.critical(
-        "order.create.razorpay_exception",
-        "payment",
-        { orderId, error: rzpErr instanceof Error ? rzpErr.message : String(rzpErr), requestId },
-        requestId
-      );
-      return NextResponse.json(
-        { success: false, error: "We could not start your payment. Please try again." },
-        { status: 502 }
-      );
+      Logger.critical("order.create.razorpay_exception", "payment", { orderId, error: String(rzpErr) }, requestId);
+      return apiError("We could not start your payment. Please try again.", "GATEWAY_EXCEPTION", 502, undefined, requestId);
     }
 
-    // ---- Step 3: the payments row. Without it the webhook cannot reconcile. ----
     const { error: payErr } = await supabase.from("payments").upsert(
       {
         order_id: orderId,
@@ -210,39 +138,31 @@ export async function POST(req: NextRequest) {
     );
 
     if (payErr) {
-      // A Razorpay order now exists that we cannot reconcile on webhook. That is
-      // exactly the case an on-call human must see.
-      Logger.critical(
-        "order.create.payment_row_failed",
-        "payment",
-        { orderId, razorpayOrderId, error: payErr.message, requestId },
-        requestId
-      );
-      return NextResponse.json(
-        { success: false, error: "We could not start your payment. Please try again." },
-        { status: 502 }
-      );
+      Logger.critical("order.create.payment_row_failed", "payment", { orderId, razorpayOrderId, error: payErr.message }, requestId);
+      return apiError("We could not start your payment. Please try again.", "PAYMENT_RECORD_FAILED", 502, undefined, requestId);
     }
 
-    Logger.info(
-      "order.create.succeeded",
-      "order",
-      { orderId, orderNumber, totalAmount, razorpayOrderId },
-      requestId,
-      Date.now() - startedAt
-    );
+    const durationMs = Date.now() - startedAt;
+    if (durationMs > 500) {
+      Logger.warn("api.slow_request", "order", { route: "/api/orders/create", durationMs }, requestId);
+    }
 
-    return NextResponse.json({
-      success: true,
-      order_id: orderId,
-      order_number: orderNumber,
-      total: totalAmount,
-      razorpay_order_id: razorpayOrderId,
-      key_id: keyId,
-    });
+    Logger.info("order.create.succeeded", "order", { orderId, orderNumber, totalAmount, razorpayOrderId }, requestId, durationMs);
+
+    return apiSuccess(
+      {
+        order_id: orderId,
+        order_number: orderNumber,
+        total: totalAmount,
+        razorpay_order_id: razorpayOrderId,
+        key_id: keyId,
+      },
+      200,
+      { request_id: requestId, duration_ms: durationMs }
+    );
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    Logger.critical("order.create.exception", "order", { error: errorMsg, requestId }, requestId);
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
+    Logger.critical("order.create.exception", "order", { error: errorMsg }, requestId);
+    return apiError("Internal server error", "INTERNAL_ERROR", 500, undefined, requestId);
   }
 }

@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { useAdminStore, ExtendedMenuItem } from "@/lib/admin-store";
+import { useAdminStore } from "@/lib/admin-store";
 import { formatCurrency } from "@/lib/utils";
-import { Plus, Edit2, Check, X, ToggleLeft, ToggleRight, Flame, Utensils, Search } from "lucide-react";
+import { Plus, Edit2, Check, X, ToggleLeft, ToggleRight, Flame, Search } from "lucide-react";
 
 export function MenuManager() {
   const { menuItemsList, toggleMenuItemAvailability, updateMenuItemPrice, addMenuItem } = useAdminStore();
@@ -61,32 +61,23 @@ export function MenuManager() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 max-w-[1600px] mx-auto">
       {/* Header Bar */}
-      <div className="glass-panel p-4 rounded-xl flex flex-col md:flex-row gap-3 items-center justify-between">
-        {/* Search */}
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-smoke)]" />
-          <input
-            type="text"
-            placeholder="Search dish name or description..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-lg bg-[var(--color-void-raised)] border border-[rgba(201,161,90,0.2)] text-xs text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)]"
-          />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+        <div>
+          <h2 className="text-lg font-bold text-[#111827]">Menu Management</h2>
+          <p className="text-xs text-[#6B7280]">Manage food menu items, prices, and live POS item availability</p>
         </div>
 
-        {/* Category Pills & Add Dish */}
-        <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
-          <div className="flex gap-1 bg-[var(--color-void-raised)] p-1 rounded-lg border border-white/5">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Category Tabs */}
+          <div className="flex flex-wrap gap-1 bg-[#F9FAFB] border border-[#E5E7EB] p-1 rounded-xl text-xs font-bold">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1 rounded text-xs font-medium capitalize transition-all ${
-                  selectedCategory === cat
-                    ? "bg-[var(--color-gold)] text-[var(--color-void)] font-bold"
-                    : "text-[var(--color-smoke)] hover:text-white"
+                className={`rounded-lg px-3 py-1 transition-all cursor-pointer capitalize ${
+                  selectedCategory === cat ? "bg-[#2563EB] text-white shadow-2xs" : "text-[#6B7280] hover:text-[#111827]"
                 }`}
               >
                 {cat}
@@ -96,10 +87,9 @@ export function MenuManager() {
 
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-[var(--color-gold-dim)] to-[var(--color-gold)] text-[var(--color-void)] text-xs font-bold hover:brightness-110 transition-all whitespace-nowrap shadow-md"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#1D4ED8] transition-colors cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add New Dish</span>
+            <Plus className="h-4 w-4" /> Add New Dish
           </button>
         </div>
       </div>
@@ -109,19 +99,19 @@ export function MenuManager() {
         {filteredItems.map((item) => (
           <div
             key={item.id}
-            className={`glass-panel p-4 rounded-xl border transition-all ${
-              item.available ? "border-[rgba(201,161,90,0.15)]" : "border-red-500/20 bg-red-500/[0.02] opacity-75"
+            className={`rounded-2xl border p-5 shadow-xs transition-all bg-white ${
+              item.available ? "border-[#E5E7EB]" : "border-rose-200 bg-rose-50/20"
             }`}
           >
             {/* Top row */}
             <div className="flex items-start justify-between gap-2 mb-2">
               <div>
-                <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--color-gold)]">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-[#2563EB]">
                   {item.category_name}
                 </span>
-                <h4 className="text-sm font-semibold text-[var(--color-ivory)] flex items-center gap-1.5">
+                <h4 className="text-sm font-bold text-[#111827] flex items-center gap-1.5">
                   <span
-                    className={`w-2 h-2 rounded-full ${item.is_veg ? "bg-emerald-400" : "bg-red-400"}`}
+                    className={`h-2 w-2 rounded-full ${item.is_veg ? "bg-emerald-500" : "bg-rose-500"}`}
                     title={item.is_veg ? "Vegetarian" : "Non-Vegetarian"}
                   />
                   {item.name}
@@ -131,49 +121,49 @@ export function MenuManager() {
               {/* Availability Toggle */}
               <button
                 onClick={() => toggleMenuItemAvailability(item.id)}
-                className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1 transition-all ${
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold border cursor-pointer transition-all ${
                   item.available
-                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                    : "bg-red-500/20 text-red-300 border-red-500/30"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-rose-50 text-rose-600 border-rose-200"
                 }`}
               >
-                {item.available ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />}
+                {item.available ? <ToggleRight className="h-3.5 w-3.5" /> : <ToggleLeft className="h-3.5 w-3.5" />}
                 <span>{item.available ? "Available" : "Sold Out"}</span>
               </button>
             </div>
 
-            <p className="text-xs text-[var(--color-smoke)] mb-3 line-clamp-2 min-h-[32px]">
+            <p className="text-xs text-[#6B7280] mb-3 line-clamp-2 min-h-[32px]">
               {item.description}
             </p>
 
             {/* Bottom Price & Controls */}
-            <div className="border-t border-white/5 pt-3 flex items-center justify-between">
+            <div className="border-t border-[#E5E7EB] pt-3 flex items-center justify-between">
               <div>
-                <span className="text-[10px] text-[var(--color-smoke)] block">Price (INR):</span>
+                <span className="text-[10px] text-[#6B7280] block font-semibold">Price (INR):</span>
                 {editingPriceId === item.id ? (
                   <div className="flex items-center gap-1 mt-0.5">
                     <input
                       type="number"
                       value={tempPrice}
                       onChange={(e) => setTempPrice(Number(e.target.value))}
-                      className="w-20 px-2 py-0.5 rounded bg-[var(--color-void-raised)] border border-[var(--color-gold)] text-xs text-[var(--color-ivory)] font-bold focus:outline-none"
+                      className="w-20 rounded-lg border border-[#2563EB] px-2 py-0.5 text-xs text-[#111827] font-bold focus:outline-none"
                     />
                     <button
                       onClick={() => handleSavePrice(item.id)}
-                      className="p-1 rounded bg-emerald-500 text-white hover:bg-emerald-600"
+                      className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
                     >
-                      <Check className="w-3 h-3" />
+                      <Check className="h-3 w-3" />
                     </button>
                     <button
                       onClick={() => setEditingPriceId(null)}
-                      className="p-1 rounded bg-gray-600 text-white hover:bg-gray-700"
+                      className="p-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="h-3 w-3" />
                     </button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-[var(--color-gold-bright)]">
+                    <span className="text-sm font-bold text-[#2563EB]">
                       {formatCurrency(item.price)}
                     </span>
                     <button
@@ -181,19 +171,19 @@ export function MenuManager() {
                         setEditingPriceId(item.id);
                         setTempPrice(item.price);
                       }}
-                      className="text-[var(--color-smoke)] hover:text-[var(--color-gold)] p-0.5"
+                      className="text-[#6B7280] hover:text-[#2563EB] p-0.5 cursor-pointer"
                       title="Edit Price"
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
+                      <Edit2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 )}
               </div>
 
               {/* Spice Level indicator */}
-              <div className="flex items-center gap-0.5 text-xs text-[var(--color-smoke)]">
+              <div className="flex items-center gap-0.5 text-xs text-[#6B7280]">
                 {Array.from({ length: item.spice_level }).map((_, i) => (
-                  <Flame key={i} className="w-3 h-3 text-red-400 fill-red-400" />
+                  <Flame key={i} className="h-3 w-3 text-rose-500 fill-rose-500" />
                 ))}
               </div>
             </div>
@@ -203,44 +193,42 @@ export function MenuManager() {
 
       {/* Add New Dish Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
           <form
             onSubmit={handleCreateItem}
-            className="glass-panel p-6 rounded-2xl max-w-md w-full border-[var(--color-gold)]/40 shadow-2xl animate-fade-up space-y-4"
+            className="w-full max-w-md rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xl space-y-4 text-xs"
           >
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h4 className="font-display font-semibold text-[var(--color-ivory)] text-base">
-                Add New Menu Dish
-              </h4>
+            <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3">
+              <h3 className="text-base font-bold text-[#111827]">Add New Menu Dish</h3>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="text-[var(--color-smoke)] hover:text-white"
+                className="text-gray-400 hover:text-[#111827] p-1"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3">
               <div>
-                <label className="text-[var(--color-smoke)] font-medium block mb-1">Dish Name</label>
+                <label className="font-bold text-[#111827] block mb-1">Dish Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Telangana Natukodi Fry"
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-[var(--color-void-raised)] border border-[rgba(201,161,90,0.2)] text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)]"
+                  className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 text-xs text-[#111827] focus:border-[#2563EB] focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[var(--color-smoke)] font-medium block mb-1">Category</label>
+                  <label className="font-bold text-[#111827] block mb-1">Category</label>
                   <select
                     value={newItemCategory}
                     onChange={(e) => setNewItemCategory(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-void-raised)] border border-[rgba(201,161,90,0.2)] text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)]"
+                    className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 text-xs text-[#111827] focus:border-[#2563EB] focus:outline-none"
                   >
                     {categories.filter((c) => c !== "all").map((c) => (
                       <option key={c} value={c}>
@@ -251,68 +239,39 @@ export function MenuManager() {
                 </div>
 
                 <div>
-                  <label className="text-[var(--color-smoke)] font-medium block mb-1">Price (₹)</label>
+                  <label className="font-bold text-[#111827] block mb-1">Price (₹)</label>
                   <input
                     type="number"
                     required
                     min={10}
                     value={newItemPrice}
                     onChange={(e) => setNewItemPrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-void-raised)] border border-[rgba(201,161,90,0.2)] text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)] font-bold"
+                    className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 text-xs text-[#111827] font-bold focus:border-[#2563EB] focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[var(--color-smoke)] font-medium block mb-1">Description</label>
+                <label className="font-bold text-[#111827] block mb-1">Description</label>
                 <textarea
                   rows={2}
-                  placeholder="Short description of ingredients and preparation style..."
+                  placeholder="Short description of ingredients..."
                   value={newItemDesc}
                   onChange={(e) => setNewItemDesc(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-[var(--color-void-raised)] border border-[rgba(201,161,90,0.2)] text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)]"
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-2.5 text-xs text-[#111827] focus:border-[#2563EB] focus:outline-none"
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="text-[var(--color-smoke)] font-medium block mb-1">Spice Level (0-3)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={3}
-                    value={newItemSpice}
-                    onChange={(e) => setNewItemSpice(Number(e.target.value))}
-                    className="w-full px-3 py-1.5 rounded-lg bg-[var(--color-void-raised)] border border-[rgba(201,161,90,0.2)] text-[var(--color-ivory)]"
-                  />
-                </div>
-
-                <div className="flex items-center pt-5">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newItemVeg}
-                      onChange={(e) => setNewItemVeg(e.target.checked)}
-                      className="accent-[var(--color-gold)]"
-                    />
-                    <span className="text-[var(--color-ivory)] font-medium">Vegetarian Dish</span>
-                  </label>
-                </div>
               </div>
             </div>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex justify-end gap-3 pt-3 border-t border-[#E5E7EB]">
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="flex-1 py-2 rounded-lg glass-panel text-[var(--color-smoke)] hover:text-white"
+                className="h-9 rounded-xl border border-[#E5E7EB] bg-white px-4 text-xs font-bold text-[#111827] hover:bg-[#F9FAFB]"
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                className="flex-1 py-2 rounded-lg bg-gradient-to-r from-[var(--color-gold-dim)] to-[var(--color-gold)] text-[var(--color-void)] font-bold hover:brightness-110"
-              >
+              <button type="submit" className="h-9 rounded-xl bg-[#2563EB] px-4 text-xs font-bold text-white shadow-2xs hover:bg-[#1D4ED8]">
                 Create Dish
               </button>
             </div>

@@ -1,41 +1,59 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { AdminHeader } from "@/components/admin/AdminHeader";
+import React, { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { BusinessAdminSidebar } from "@/components/admin/BusinessAdminSidebar";
+import { BusinessAdminHeader } from "@/components/admin/BusinessAdminHeader";
+import { BusinessAdminToast } from "@/components/admin/BusinessAdminToast";
+import { useBusinessAdminStore } from "@/store/useBusinessAdminStore";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+  const { isSidebarCollapsed, isMobileSidebarOpen, setMobileSidebarOpen, setActiveTab } =
+    useBusinessAdminStore();
 
-  const openSidebar = useCallback(() => setSidebarOpen(true), []);
-  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+  useEffect(() => {
+    if (pathname.includes("/orders")) setActiveTab("orders");
+    else if (pathname.includes("/tables")) setActiveTab("tables");
+    else if (pathname.includes("/menu")) setActiveTab("menu");
+    else if (pathname.includes("/customers") || pathname.includes("/leads")) setActiveTab("customers");
+    else if (pathname.includes("/payments")) setActiveTab("payments");
+    else if (pathname.includes("/reports")) setActiveTab("reports");
+    else if (pathname.includes("/staff")) setActiveTab("staff");
+    else if (pathname.includes("/settings")) setActiveTab("settings");
+    else setActiveTab("dashboard");
+  }, [pathname, setActiveTab]);
 
   return (
-    <div className="min-h-screen bg-[var(--color-void)] text-[var(--color-ivory)] flex overflow-hidden">
-      {/* ── Sidebar ──────────────────────────────────────────────────── */}
-      {/*
-        Desktop (lg+): sticky sidebar, always visible in the flex row.
-        Mobile/Tablet (<lg): fixed overlay that slides in from the left.
-        The sidebar itself handles both layouts via responsive classes.
-      */}
-      <AdminSidebar open={sidebarOpen} onClose={closeSidebar} />
-
-      {/* ── Mobile Backdrop ──────────────────────────────────────────── */}
-      {sidebarOpen && (
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 antialiased font-sans flex flex-col relative">
+      {/* Mobile Drawer Backdrop */}
+      {isMobileSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={closeSidebar}
-          aria-hidden="true"
+          onClick={() => setMobileSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs transition-opacity lg:hidden"
         />
       )}
 
-      {/* ── Main Content Area ─────────────────────────────────────────── */}
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
-        <AdminHeader onMenuClick={openSidebar} />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
+      {/* Fixed Sidebar */}
+      <BusinessAdminSidebar />
+
+      {/* Main Viewport Shell with Dynamic Padding Shift */}
+      <div
+        className={`flex flex-col flex-1 min-h-screen transition-all duration-300 ease-in-out ${
+          isSidebarCollapsed ? "lg:pl-[70px]" : "lg:pl-[240px]"
+        }`}
+      >
+        {/* Sticky Header */}
+        <BusinessAdminHeader />
+
+        {/* Scrollable Canvas Container: max-width 1280px, padding 24px */}
+        <main className="flex-1 p-4 sm:p-6 max-w-[1280px] w-full mx-auto space-y-6">
           {children}
         </main>
       </div>
+
+      {/* Reactive System Toast Feedback */}
+      <BusinessAdminToast />
     </div>
   );
 }

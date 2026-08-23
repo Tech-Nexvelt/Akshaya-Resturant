@@ -4,270 +4,183 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAdminStore } from "@/lib/admin-store";
-import {
-  UserRole,
-  ADMIN_AND_ABOVE,
-  ALL_ROLES,
-  OWNER_AND_ABOVE,
-  STAFF_AND_ABOVE,
-} from "@/types/platform";
+import { useSuperAdminStore } from "@/store/useSuperAdminStore";
 import {
   LayoutDashboard,
   ShoppingBag,
+  FileText,
   Users,
   CreditCard,
-  FileText,
-  Activity,
   UtensilsCrossed,
+  Activity,
   Settings,
-  Lock,
-  LogOut,
-  ChevronRight,
   ShieldCheck,
-  Store,
   X,
+  Store,
 } from "lucide-react";
 
-interface NavItem {
+interface AdminNavItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  allowedRoles: readonly UserRole[];
+  badgeKey?: "orders" | "payments" | "leads";
 }
 
-const navItems: NavItem[] = [
-  {
-    name: "Dashboard",
-    href: "/admin/dashboard",
-    icon: LayoutDashboard,
-    allowedRoles: STAFF_AND_ABOVE,
-  },
-  {
-    name: "Live Orders",
-    href: "/admin/orders",
-    icon: ShoppingBag,
-    allowedRoles: STAFF_AND_ABOVE,
-  },
-  {
-    name: "Invoices",
-    href: "/admin/invoices",
-    icon: FileText,
-    allowedRoles: STAFF_AND_ABOVE,
-  },
-  {
-    name: "Leads & Enquiries",
-    href: "/admin/leads",
-    icon: Users,
-    allowedRoles: ADMIN_AND_ABOVE,
-  },
-  {
-    name: "Payments",
-    href: "/admin/payments",
-    icon: CreditCard,
-    allowedRoles: ADMIN_AND_ABOVE,
-  },
-  {
-    name: "Menu Management",
-    href: "/admin/menu",
-    icon: UtensilsCrossed,
-    allowedRoles: ADMIN_AND_ABOVE,
-  },
-  {
-    name: "Activity Audit Log",
-    href: "/admin/activity",
-    icon: Activity,
-    allowedRoles: ADMIN_AND_ABOVE,
-  },
-  {
-    name: "Settings & RBAC",
-    href: "/admin/settings",
-    icon: Settings,
-    allowedRoles: OWNER_AND_ABOVE,
-  },
+const NAV_ITEMS: AdminNavItem[] = [
+  { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+  { name: "Orders", href: "/admin/orders", icon: ShoppingBag, badgeKey: "orders" },
+  { name: "Invoices (PI / TI)", href: "/admin/invoices", icon: FileText },
+  { name: "Leads & Enquiries", href: "/admin/leads", icon: Users, badgeKey: "leads" },
+  { name: "Payments", href: "/admin/payments", icon: CreditCard, badgeKey: "payments" },
+  { name: "Menu Management", href: "/admin/menu", icon: UtensilsCrossed },
+  { name: "Activity Logs", href: "/admin/activity", icon: Activity },
+  { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
-interface AdminSidebarProps {
-  /** Whether the sidebar is open (mobile overlay mode) */
-  open: boolean;
-  /** Close handler — called when X button or backdrop is clicked */
-  onClose: () => void;
-}
-
-export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
+export function AdminSidebar({
+  open: propOpen,
+  onClose: propOnClose,
+}: {
+  open?: boolean;
+  onClose?: () => void;
+} = {}) {
   const pathname = usePathname();
-  const { currentRole, currentUser, setRole } = useAdminStore();
+  const { currentRole, orders, banquetEnquiries, cateringEnquiries } = useAdminStore();
+  const superStore = useSuperAdminStore();
 
-  const isRoleAllowed = (allowedRoles: readonly UserRole[]) => {
-    return currentRole ? allowedRoles.includes(currentRole) : false;
+  const isCollapsed = superStore.isSidebarCollapsed;
+
+  // DERIVED DYNAMIC BADGE COUNTS
+  const pendingOrdersCount = orders.filter(
+    (o) => o.status === "pending" || o.status === "preparing"
+  ).length;
+
+  const newLeadsCount =
+    banquetEnquiries.filter((b) => b.status === "new").length +
+    cateringEnquiries.filter((c) => c.status === "new").length;
+
+  const failedPaymentsCount = superStore.payments.filter((p) => p.status === "Failed").length;
+
+  const getDynamicBadge = (key?: string): string | number | undefined => {
+    switch (key) {
+      case "orders":
+        return pendingOrdersCount > 0 ? pendingOrdersCount : undefined;
+      case "leads":
+        return newLeadsCount > 0 ? `${newLeadsCount} New` : undefined;
+      case "payments":
+        return failedPaymentsCount > 0 ? `${failedPaymentsCount} Failed` : undefined;
+      default:
+        return undefined;
+    }
   };
 
   return (
-    /*
-     * Layout strategy:
-     *  - Mobile (<lg): fixed, z-50, full height, slides in/out via transform.
-     *    The backdrop is rendered in AdminLayout (so it's outside this element).
-     *  - Desktop (lg+): static inside the flex row, always visible, w-64.
-     *
-     * Using CSS translate instead of conditional rendering so the sidebar DOM
-     * is always mounted → no layout shift on first open.
-     */
     <aside
-      className={[
-        /* --- Shared --- */
-        "flex flex-col bg-[var(--color-void-soft)] border-r border-[rgba(201,161,90,0.15)] select-none",
-        /* --- Mobile: fixed overlay, slides in from left --- */
-        "fixed inset-y-0 left-0 z-50 w-72 transition-transform duration-300 ease-in-out",
-        open ? "translate-x-0" : "-translate-x-full",
-        /* --- Desktop: static in flex row, always visible --- */
-        "lg:relative lg:translate-x-0 lg:w-64 lg:z-auto lg:flex-shrink-0",
-      ].join(" ")}
-      aria-label="Admin Navigation"
+      className={`fixed inset-y-0 left-0 z-50 flex flex-col select-none bg-white text-slate-700 border-r border-[#E5E7EB] transition-all duration-300 ease-in-out ${
+        isCollapsed ? "w-[70px]" : "w-[240px]"
+      } ${propOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
     >
-      {/* ── Brand Header ──────────────────────────────────────────────── */}
-      <div className="p-5 border-b border-[rgba(201,161,90,0.15)] flex items-center justify-between flex-shrink-0">
-        <Link href="/admin/dashboard" className="flex items-center gap-3 group" onClick={onClose}>
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--color-gold-dim)] to-[var(--color-gold)] flex items-center justify-center font-display font-bold text-[var(--color-void)] text-lg shadow-md group-hover:scale-105 transition-transform">
+      {/* Brand Header */}
+      <div
+        className={`flex h-16 items-center border-b border-[#E5E7EB] px-4 ${
+          isCollapsed ? "justify-center" : "justify-between"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#2563EB] font-black text-white text-lg shadow-sm">
             A
           </div>
-          <div>
-            <div className="font-display font-bold text-[var(--color-ivory)] text-sm tracking-wide leading-tight">
-              AKSHAYA
-            </div>
-            <div className="text-[10px] text-[var(--color-gold)] uppercase tracking-widest font-semibold">
-              Admin Console
-            </div>
-          </div>
-        </Link>
-
-        <div className="flex items-center gap-1">
-          <Link
-            href="/home"
-            title="Back to Public Site"
-            className="text-[var(--color-smoke)] hover:text-[var(--color-gold)] transition-colors p-1.5 rounded-md hover:bg-white/5 min-h-[44px] min-w-[44px] flex items-center justify-center"
-            onClick={onClose}
-          >
-            <Store className="w-4 h-4" />
-          </Link>
-          {/* Mobile close button — hidden on desktop */}
-          <button
-            onClick={onClose}
-            aria-label="Close navigation menu"
-            className="lg:hidden text-[var(--color-smoke)] hover:text-[var(--color-ivory)] p-1.5 rounded-md hover:bg-white/5 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* ── Role Badge ───────────────────────────────────────────────── */}
-      <div className="px-4 py-3 bg-[var(--color-void-raised)]/60 border-b border-[rgba(201,161,90,0.1)] flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-[var(--color-gold)]" />
-          <span className="text-xs text-[var(--color-smoke)]">Active Role:</span>
-        </div>
-        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[var(--color-gold)]/15 text-[var(--color-gold-bright)] border border-[var(--color-gold)]/30">
-          {currentRole || "Logged Out"}
-        </span>
-      </div>
-
-      {/* ── Navigation Links ─────────────────────────────────────────── */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto" aria-label="Admin sections">
-        <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-smoke)]/60 px-3 py-2">
-          Navigation
-        </div>
-        {navItems.map((item) => {
-          const active = pathname === item.href;
-          const allowed = isRoleAllowed(item.allowedRoles);
-          const Icon = item.icon;
-
-          if (!allowed) {
-            return (
-              <div
-                key={item.href}
-                className="flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium text-[var(--color-smoke)]/40 bg-white/[0.01] cursor-not-allowed group relative min-h-[44px]"
-                title={`Requires ${item.allowedRoles.join(" or ")} role`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className="w-4 h-4 text-[var(--color-smoke)]/40" />
-                  <span>{item.name}</span>
-                </div>
-                <Lock className="w-3.5 h-3.5 text-[var(--color-smoke)]/40" />
+          {!isCollapsed && (
+            <div className="min-w-0 transition-opacity duration-300">
+              <div className="font-extrabold text-[#111827] text-sm tracking-wider leading-tight truncate">
+                AKSHAYA
               </div>
-            );
-          }
+              <div className="text-[10px] text-[#2563EB] font-bold uppercase tracking-wider">
+                ADMIN CONSOLE
+              </div>
+            </div>
+          )}
+        </div>
+
+        {propOnClose && (
+          <button
+            onClick={propOnClose}
+            className="lg:hidden text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100"
+            aria-label="Close navigation"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
+      </div>
+
+      {/* Navigation Links Rail */}
+      <nav className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin">
+        {!isCollapsed && (
+          <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+            Platform Control
+          </div>
+        )}
+
+        {NAV_ITEMS.map((item) => {
+          const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+          const Icon = item.icon;
+          const badge = getDynamicBadge(item.badgeKey);
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              onClick={onClose}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all min-h-[44px] ${
+              onClick={propOnClose}
+              title={isCollapsed ? item.name : undefined}
+              className={`flex w-full items-center rounded-xl text-xs transition-all duration-150 cursor-pointer ${
+                isCollapsed ? "justify-center px-0 py-2.5" : "justify-between px-3.5 py-2.5"
+              } ${
                 active
-                  ? "bg-gradient-to-r from-[var(--color-gold)]/20 to-transparent text-[var(--color-gold-bright)] border-l-2 border-[var(--color-gold)]"
-                  : "text-[var(--color-smoke)] hover:text-[var(--color-ivory)] hover:bg-white/[0.04]"
+                  ? "bg-[#2563EB] text-white font-bold shadow-sm"
+                  : "text-gray-600 hover:bg-blue-50 hover:text-[#2563EB] font-semibold"
               }`}
-              aria-current={active ? "page" : undefined}
             >
               <div className="flex items-center gap-3">
                 <Icon
-                  className={`w-4 h-4 ${
-                    active ? "text-[var(--color-gold-bright)]" : "text-[var(--color-smoke)]"
+                  className={`h-4 w-4 shrink-0 transition-colors ${
+                    active ? "text-white" : "text-gray-500 group-hover:text-[#2563EB]"
                   }`}
                 />
-                <span>{item.name}</span>
+                {!isCollapsed && <span className="truncate">{item.name}</span>}
               </div>
-              {active && <ChevronRight className="w-3.5 h-3.5 text-[var(--color-gold)]" />}
+
+              {!isCollapsed && badge !== undefined && (
+                <span
+                  className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                    active
+                      ? "bg-white/20 text-white"
+                      : item.badgeKey === "payments"
+                      ? "bg-rose-50 text-rose-600 border border-rose-200"
+                      : "bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  {badge}
+                </span>
+              )}
             </Link>
           );
         })}
       </nav>
 
-      {/* ── User Profile & Role Switcher ──────────────────────────────── */}
-      <div className="p-4 border-t border-[rgba(201,161,90,0.15)] bg-[var(--color-void-raised)]/40 flex-shrink-0">
-        <div className="flex items-center justify-between mb-3">
-          <div className="truncate min-w-0">
-            <div className="text-xs font-semibold text-[var(--color-ivory)] truncate">
-              {currentUser?.full_name || "Admin Staff"}
-            </div>
-            <div className="text-[10px] text-[var(--color-smoke)] truncate">
-              {currentUser?.email || "staff@akshaya.in"}
-            </div>
+      {/* Profile Footer */}
+      <div className={`p-3.5 border-t border-[#E5E7EB] bg-gray-50/50 ${isCollapsed ? "flex justify-center" : ""}`}>
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2563EB] font-bold text-xs text-white shadow-xs">
+            AD
           </div>
-          <button
-            onClick={() => setRole(null)}
-            title="Sign out"
-            aria-label="Sign out"
-            className="text-[var(--color-smoke)] hover:text-red-400 p-1.5 rounded hover:bg-white/5 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          {!isCollapsed && (
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-[#111827] truncate">Admin User</div>
+              <div className="text-[10px] text-gray-500 truncate font-mono">admin@akshaya.com</div>
+            </div>
+          )}
+          {!isCollapsed && <ShieldCheck className="h-4 w-4 text-[#2563EB] shrink-0" />}
         </div>
-
-        {/* Quick Role Tester — dev-only. This is a UI-building aid, not access control:
-            it must never ship where a real visitor could self-promote to Owner. Remove
-            entirely once Supabase Auth replaces the mock role store (see PROJECT_MEMORY.md). */}
-        {process.env.NODE_ENV !== "production" && (
-          <div className="pt-2 border-t border-[rgba(201,161,90,0.1)]">
-            <div className="text-[9px] uppercase tracking-wider text-[var(--color-gold-dim)] font-semibold mb-1.5">
-              Dev Only — Role Preview Switcher
-            </div>
-            <div className="grid grid-cols-2 gap-1">
-              {ALL_ROLES.map((role) => (
-                <button
-                  key={role}
-                  onClick={() => setRole(role)}
-                  className={`py-1.5 rounded text-[10px] font-semibold capitalize transition-colors min-h-[36px] ${
-                    currentRole === role
-                      ? "bg-[var(--color-gold)] text-[var(--color-void)]"
-                      : "bg-white/5 text-[var(--color-smoke)] hover:bg-white/10 hover:text-[var(--color-ivory)]"
-                  }`}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </aside>
   );

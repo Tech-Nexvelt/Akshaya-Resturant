@@ -1,143 +1,251 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { useAdminStore } from "@/lib/admin-store";
-import { Bell, PlusCircle, Radio, Database, X, Menu } from "lucide-react";
+import {
+  Search,
+  Bell,
+  Menu,
+  ShieldCheck,
+  ChevronDown,
+  LogOut,
+  User,
+  ChevronLeft,
+  ChevronRight,
+  AlertOctagon,
+  MessageSquare,
+  AlertTriangle,
+  UserPlus,
+  CheckCheck,
+} from "lucide-react";
+import { useSuperAdminStore, NotificationType } from "@/store/useSuperAdminStore";
 
-const pageTitles: Record<string, string> = {
+const PAGE_TITLES: Record<string, string> = {
   "/admin/dashboard": "Dashboard Overview",
-  "/admin/orders": "Live Orders",
-  "/admin/invoices": "Invoices & GST",
+  "/admin/orders": "Live Orders Queue",
+  "/admin/invoices": "Invoices & Billing (PI / TI)",
   "/admin/leads": "Leads & Enquiries",
-  "/admin/payments": "Payment Reconciliation",
-  "/admin/menu": "Menu Editor",
-  "/admin/activity": "Activity Audit Log",
-  "/admin/settings": "Settings & RBAC",
-  "/admin/login": "Admin Login",
+  "/admin/payments": "Payments Reconciliation",
+  "/admin/menu": "Menu Management",
+  "/admin/activity": "Activity Audit Logs",
+  "/admin/settings": "Settings & Staff RBAC",
 };
 
 interface AdminHeaderProps {
-  /** Opens the mobile sidebar — wired to AdminLayout state */
-  onMenuClick: () => void;
+  onMenuClick?: () => void;
 }
 
-export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
+export function AdminHeader({ onMenuClick }: AdminHeaderProps = {}) {
   const pathname = usePathname();
-  const title = pageTitles[pathname] || "Admin Console";
-  const { addSimulatedOrder, lastOrderAlert, clearLastOrderAlert, currentRole } = useAdminStore();
-  const [showNotification, setShowNotification] = useState(false);
+  const title = PAGE_TITLES[pathname] || "Admin Console";
+  const superStore = useSuperAdminStore();
+
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const notifRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  const isCollapsed = superStore.isSidebarCollapsed;
+  const unreadCount = superStore.notifications.filter((n) => !n.read).length;
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setNotifOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const getNotifIcon = (type: NotificationType) => {
+    switch (type) {
+      case "payment_failed":
+        return <AlertOctagon className="h-4 w-4 text-[#EF4444]" />;
+      case "new_enquiry":
+        return <MessageSquare className="h-4 w-4 text-[#2563EB]" />;
+      case "webhook_failure":
+        return <AlertTriangle className="h-4 w-4 text-[#F59E0B]" />;
+      case "new_user":
+        return <UserPlus className="h-4 w-4 text-[#10B981]" />;
+    }
+  };
+
+  const getNotifIconBg = (type: NotificationType) => {
+    switch (type) {
+      case "payment_failed":
+        return "bg-rose-50 border-rose-200";
+      case "new_enquiry":
+        return "bg-blue-50 border-blue-200";
+      case "webhook_failure":
+        return "bg-amber-50 border-amber-200";
+      case "new_user":
+        return "bg-emerald-50 border-emerald-200";
+    }
+  };
 
   return (
-    <header className="h-14 sm:h-16 border-b border-[rgba(201,161,90,0.15)] bg-[var(--color-void-soft)]/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 flex-shrink-0">
-
-      {/* ── Left: Hamburger (mobile) + Title ─────────────────────── */}
-      <div className="flex items-center gap-3 min-w-0">
-        {/* Mobile hamburger — hidden on desktop where sidebar is always visible */}
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#E5E7EB] bg-white/95 backdrop-blur-md px-4 sm:px-6 shadow-2xs">
+      {/* Sidebar Toggle & Title */}
+      <div className="flex items-center gap-3">
+        {/* Desktop Sidebar Collapse Toggle Button */}
         <button
-          onClick={onMenuClick}
-          aria-label="Open navigation menu"
-          className="lg:hidden flex items-center justify-center h-10 w-10 rounded-lg text-[var(--color-smoke)] hover:text-[var(--color-ivory)] hover:bg-white/5 transition-colors flex-shrink-0"
+          onClick={() => superStore.toggleSidebarCollapse()}
+          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          className="hidden lg:flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer"
+          aria-label="Toggle Sidebar Collapse"
         >
-          <Menu className="w-5 h-5" />
+          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>
 
-        <div className="min-w-0">
-          <h1 className="text-sm sm:text-base font-display font-semibold text-[var(--color-ivory)] tracking-wide truncate">
-            {title}
-          </h1>
-          <div className="hidden sm:block text-[11px] text-[var(--color-smoke)] truncate">
-            Akshaya Platform &bull; {pathname}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Right: Action Tools ───────────────────────────────────── */}
-      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-
-        {/* Realtime Status — hidden on small mobile */}
-        <div
-          title="Supabase Realtime Live Order Feed Status"
-          className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-medium glass-panel border-[var(--color-gold)]/20 text-[var(--color-ivory)]"
-        >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          <span className="text-[var(--color-smoke)]">Realtime:</span>
-          <span className="text-emerald-400 font-semibold">Active</span>
-        </div>
-
-        {/* DB Status Tag — only on large desktop */}
-        <div
-          title="Live Supabase project deferred by owner"
-          className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-amber-500/10 border border-amber-500/30 text-amber-300"
-        >
-          <Database className="w-3 h-3 text-amber-400" />
-          <span>Static Mode</span>
-        </div>
-
-        {/* Simulate Order — icon-only on mobile, icon+text on sm+ */}
-        {currentRole && (
+        {/* Mobile Hamburger Toggle */}
+        {onMenuClick && (
           <button
-            onClick={() => addSimulatedOrder()}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-gradient-to-r from-[var(--color-gold-dim)] to-[var(--color-gold)] text-[var(--color-void)] text-xs font-bold hover:brightness-110 transition-all shadow-md active:scale-95 min-h-[36px]"
-            title="Trigger a new incoming order to test Realtime order feed"
+            onClick={onMenuClick}
+            className="lg:hidden text-[#6B7280] hover:text-[#111827] p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            aria-label="Open mobile navigation"
           >
-            <PlusCircle className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="hidden sm:inline whitespace-nowrap">Simulate Order</span>
+            <Menu className="h-5 w-5" />
           </button>
         )}
 
-        {/* Notification Bell */}
-        <div className="relative">
+        <h1 className="font-extrabold text-lg sm:text-xl text-[#111827] tracking-tight">{title}</h1>
+      </div>
+
+      {/* Header Actions */}
+      <div className="flex items-center gap-3 sm:gap-4">
+        {/* Search Bar */}
+        <div className="relative hidden md:block w-64 lg:w-80">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
+          <input
+            type="text"
+            value={superStore.searchQuery}
+            onChange={(e) => superStore.setSearchQuery(e.target.value)}
+            placeholder="Search anything..."
+            className="h-9 w-full rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] pl-9 pr-3 text-xs text-[#111827] placeholder:text-[#9CA3AF] focus:border-[#2563EB] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
+          />
+        </div>
+
+        {/* Notifications Dropdown */}
+        <div className="relative" ref={notifRef}>
           <button
-            onClick={() => setShowNotification(!showNotification)}
+            onClick={() => setNotifOpen(!notifOpen)}
+            className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F9FAFB] hover:text-[#111827] transition-colors cursor-pointer"
             aria-label="Notifications"
-            aria-expanded={showNotification}
-            className="relative p-2 rounded-lg glass-panel hover:border-[var(--color-gold)] text-[var(--color-smoke)] hover:text-[var(--color-ivory)] transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
           >
-            <Bell className="w-4 h-4" />
-            {lastOrderAlert && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[var(--color-gold-bright)] animate-pulse" />
+            <Bell className="h-4 w-4" />
+            {unreadCount > 0 && (
+              <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#EF4444] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#EF4444]"></span>
+              </span>
             )}
           </button>
 
-          {/* Notification dropdown — constrained width on mobile */}
-          {showNotification && (
-            <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-xs sm:w-80 glass-panel rounded-xl p-4 shadow-2xl z-50 border-[var(--color-gold)]/30 animate-fade-up">
-              <div className="flex items-center justify-between border-b border-[rgba(201,161,90,0.15)] pb-2 mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-gold-bright)]">
-                  Live Notifications
-                </span>
+          {/* Interactive Notifications Panel */}
+          {notifOpen && (
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl border border-[#E5E7EB] bg-white p-0 shadow-lg ring-1 ring-slate-900/5 z-50 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[#E5E7EB] bg-gray-50/50">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-bold text-[#111827]">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-[#2563EB]">
+                      {unreadCount} new
+                    </span>
+                  )}
+                </div>
                 <button
-                  onClick={() => setShowNotification(false)}
-                  aria-label="Close notifications"
-                  className="text-[var(--color-smoke)] hover:text-[var(--color-ivory)] p-1"
+                  onClick={() => superStore.markAllNotificationsAsRead()}
+                  className="text-[11px] font-bold text-[#2563EB] hover:underline cursor-pointer flex items-center gap-1"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <CheckCheck className="h-3 w-3" /> Mark all as read
                 </button>
               </div>
 
-              {lastOrderAlert ? (
-                <div className="bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/30 rounded-lg p-3 text-xs text-[var(--color-ivory)]">
-                  <div className="font-semibold text-[var(--color-gold-bright)] mb-1 flex items-center gap-1.5">
-                    <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                    Incoming Order Event
+              <div className="max-h-80 overflow-y-auto divide-y divide-gray-100">
+                {superStore.notifications.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-gray-500 font-medium">
+                    No new notifications
                   </div>
-                  <p className="mb-2">{lastOrderAlert}</p>
-                  <button
-                    onClick={clearLastOrderAlert}
-                    className="text-[10px] text-[var(--color-smoke)] underline hover:text-[var(--color-ivory)]"
-                  >
-                    Clear Alert
-                  </button>
-                </div>
-              ) : (
-                <p className="text-xs text-[var(--color-smoke)] py-2 text-center">
-                  No unread order notifications.
-                </p>
-              )}
+                ) : (
+                  superStore.notifications.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        superStore.markNotificationAsRead(item.id);
+                        setNotifOpen(false);
+                      }}
+                      className={`flex items-start gap-3 p-3.5 transition-colors cursor-pointer hover:bg-gray-50 ${
+                        !item.read ? "bg-blue-50/60 border-l-4 border-[#2563EB]" : "bg-white"
+                      }`}
+                    >
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${getNotifIconBg(item.type)}`}>
+                        {getNotifIcon(item.type)}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-[#111827] truncate">{item.title}</p>
+                          <span className="text-[10px] text-gray-400 font-medium shrink-0">{item.time}</span>
+                        </div>
+                        <p className="text-[11px] text-gray-600 font-medium line-clamp-2 mt-0.5">{item.description}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Admin Privilege Badge */}
+        <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-[#DBEAFE] px-3 py-1 text-xs font-bold text-[#2563EB] border border-blue-200/50">
+          <ShieldCheck className="h-3.5 w-3.5" /> Admin Console
+        </span>
+
+        {/* Profile Avatar Dropdown */}
+        <div className="relative" ref={profileRef}>
+          <button
+            onClick={() => setProfileOpen(!profileOpen)}
+            className="flex items-center gap-2 rounded-xl p-1 hover:bg-gray-100 transition-colors cursor-pointer"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2563EB] font-bold text-xs text-white shadow-xs">
+              AD
+            </div>
+            <span className="hidden md:inline-block text-xs font-bold text-[#111827]">
+              Admin User
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 text-[#6B7280] hidden sm:block" />
+          </button>
+
+          {profileOpen && (
+            <div className="absolute right-0 mt-2 w-56 rounded-xl border border-[#E5E7EB] bg-white p-2 shadow-xl ring-1 ring-slate-900/5 z-50">
+              <div className="px-3 py-2 border-b border-slate-100">
+                <p className="text-xs font-bold text-slate-900">Admin Account</p>
+                <p className="text-[11px] text-slate-500 font-mono">admin@akshaya.com</p>
+              </div>
+              <div className="py-1">
+                <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium cursor-pointer">
+                  <User className="h-3.5 w-3.5 text-slate-400" /> Account Profile
+                </button>
+              </div>
+              <div className="border-t border-slate-100 pt-1">
+                <button
+                  onClick={async () => {
+                    setProfileOpen(false);
+                    const { performLogout } = await import("@/lib/auth/logout");
+                    performLogout("/admin/login");
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 cursor-pointer active:scale-98 transition-all"
+                >
+                  <LogOut className="h-3.5 w-3.5 text-rose-500" /> Log Out
+                </button>
+              </div>
             </div>
           )}
         </div>

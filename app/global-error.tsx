@@ -10,52 +10,27 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.error(error);
+    console.error("Critical Global App Error:", error);
   }, [error]);
 
   return (
     <html lang="en">
-      <body
-        style={{
-          margin: 0,
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#0b0f14",
-          color: "#f3ede2",
-          fontFamily: "'Segoe UI', sans-serif",
-          textAlign: "center",
-          padding: "1.5rem",
-        }}
-      >
-        <p style={{ fontSize: "0.7rem", letterSpacing: "0.3em", textTransform: "uppercase", color: "#c9a15a" }}>
-          Critical Error
-        </p>
-        <h1 style={{ fontSize: "1.75rem", margin: "1rem 0" }}>Akshaya hit a snag</h1>
-        <p style={{ color: "#8a94a3", maxWidth: 420 }}>
-          Something went wrong loading the site. Try reloading, or check back shortly.
-        </p>
-        <button
-          onClick={reset}
-          style={{
-            marginTop: "2rem",
-            background: "#c9a15a",
-            color: "#0b0f14",
-            border: "none",
-            borderRadius: 999,
-            padding: "0.75rem 2rem",
-            fontSize: "0.75rem",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.15em",
-            cursor: "pointer",
-          }}
-        >
-          Reload
-        </button>
+      <body className="bg-[#0B0F17] text-white flex min-h-screen items-center justify-center p-4">
+        <div className="max-w-md w-full rounded-2xl border border-red-500/20 bg-[#121824] p-8 text-center shadow-2xl">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-red-500/10 text-red-400">
+            ⚠️
+          </div>
+          <h2 className="text-2xl font-bold text-white">System Error</h2>
+          <p className="mt-2 text-xs text-gray-400">
+            A critical rendering error occurred. Please refresh or try again later.
+          </p>
+          <button
+            onClick={() => reset()}
+            className="mt-6 w-full rounded-xl bg-amber-500 py-3 text-xs font-bold text-black hover:bg-amber-400 transition-all"
+          >
+            Reload Application
+          </button>
+        </div>
       </body>
     </html>
   );

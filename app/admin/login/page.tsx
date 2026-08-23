@@ -1,66 +1,104 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createBrowserClient } from "@supabase/ssr";
 import { useAdminStore } from "@/lib/admin-store";
 import { ALL_ROLES, UserRole } from "@/types/platform";
-import { ShieldCheck, ArrowRight, Store, Lock } from "lucide-react";
+import { ShieldCheck, ArrowRight, Store, Lock, AlertCircle, Loader2 } from "lucide-react";
 
-/**
- * The console's front door, and one of the few `/admin` paths `middleware.ts`
- * deliberately leaves open — gating it would be a redirect loop.
- *
- * The role picker below is a preview aid that writes straight into the
- * client-side Zustand role, so anyone reaching it in production could
- * self-promote to Owner in one click. `AdminSidebar`'s equivalent switcher is
- * gated on NODE_ENV; this one was not, which made that gate pointless.
- *
- * Evaluated at build time, so the picker is not merely hidden — it is not in the
- * production bundle at all. Note it now only moves the CLIENT role: every admin
- * page runs `requireAdminSession()` on the server first, so picking "Owner" here
- * no longer opens anything on a deployment with real Supabase Auth.
- */
 const ROLE_PREVIEW_ENABLED = process.env.NODE_ENV !== "production";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectPath = searchParams?.get("redirect");
+  const authError = searchParams?.get("error");
+
   const { setRole } = useAdminStore();
   const [selectedRole, setSelectedRole] = useState<UserRole>("owner");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(
+    authError === "auth-unavailable"
+      ? "Authentication system is currently offline."
+      : authError === "account-inactive"
+      ? "Your account has been deactivated or suspended."
+      : null
+  );
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Real Supabase Auth login
+  const handleRealLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password) {
+      setErrorMsg("Please enter both email and password.");
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg(null);
+
+    try {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!url || !anonKey) {
+        throw new Error("Supabase credentials not configured.");
+      }
+
+      const supabase = createBrowserClient(url, anonKey);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        throw new Error(error.message || "Invalid credentials.");
+      }
+
+      if (data.user) {
+        // Query profile for role routing
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, status")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profile?.role) {
+          setRole(profile.role as UserRole);
+
+          if (redirectPath) {
+            router.push(redirectPath);
+          } else if (profile.role === "super_admin") {
+            router.push("/super-admin");
+          } else if (profile.role === "owner") {
+            router.push("/owner");
+          } else {
+            router.push("/admin/dashboard");
+          }
+          return;
+        }
+      }
+
+      router.push("/admin/dashboard");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Authentication failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Preview login for dev mode
+  const handlePreviewLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ROLE_PREVIEW_ENABLED) return;
     setRole(selectedRole);
     router.push("/admin/dashboard");
   };
 
-  if (!ROLE_PREVIEW_ENABLED) {
-    return (
-      <div className="flex min-h-[80vh] flex-col items-center justify-center p-4">
-        <div className="glass-panel w-full max-w-md rounded-2xl border-[var(--color-gold)]/30 p-8 text-center shadow-2xl">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-[var(--color-void-raised)] text-[var(--color-gold)]">
-            <Lock className="h-6 w-6" />
-          </div>
-          <h2 className="font-display text-2xl font-bold text-[var(--color-ivory)]">
-            Staff Sign-In Unavailable
-          </h2>
-          <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-[var(--color-smoke)]">
-            Authenticated staff sign-in is not enabled on this deployment yet. Please
-            contact the owner for access to the Akshaya admin console.
-          </p>
-          <a
-            href="/restaurant"
-            className="mt-6 inline-flex items-center gap-1.5 text-xs text-[var(--color-smoke)] transition-colors hover:text-[var(--color-gold)]"
-          >
-            <Store className="h-3.5 w-3.5" /> Return to Customer Restaurant Website
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center p-4">
+    <div className="min-h-[85vh] flex flex-col items-center justify-center p-4">
       <div className="glass-panel p-8 rounded-2xl max-w-md w-full border-[var(--color-gold)]/30 shadow-2xl animate-fade-up">
         {/* Brand Header */}
         <div className="text-center mb-6">
@@ -68,49 +106,104 @@ export default function AdminLoginPage() {
             A
           </div>
           <h2 className="text-2xl font-display font-bold text-[var(--color-ivory)]">
-            Akshaya Admin Portal
+            Akshaya Staff Portal
           </h2>
           <p className="text-xs text-[var(--color-smoke)] mt-1">
-            Real staff sign-in isn&rsquo;t live yet — pick a role to preview the console
+            Sign in with your staff credentials to access the console
           </p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div className="bg-[var(--color-void-raised)] p-3 rounded-xl border border-white/5">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-gold)] mb-2 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Preview Console As:</span>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {ALL_ROLES.map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => setSelectedRole(role)}
-                  className={`py-2 px-2 rounded-lg text-xs font-semibold capitalize transition-all ${
-                    selectedRole === role
-                      ? "bg-[var(--color-gold)] text-[var(--color-void)] font-bold shadow-sm"
-                      : "glass-panel text-[var(--color-smoke)] hover:text-white"
-                  }`}
-                >
-                  {role.replace("_", " ")}
-                </button>
-              ))}
-            </div>
+        {errorMsg && (
+          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {/* Real Sign In Form */}
+        <form onSubmit={handleRealLogin} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-[var(--color-ivory)] mb-1">
+              Email Address
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="staff@akshaya.com"
+              className="w-full h-10 rounded-xl border border-white/10 bg-[var(--color-void-raised)] px-3 text-xs text-[var(--color-ivory)] placeholder:text-gray-500 focus:border-[var(--color-gold)] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[var(--color-ivory)] mb-1">
+              Password
+            </label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full h-10 rounded-xl border border-white/10 bg-[var(--color-void-raised)] px-3 text-xs text-[var(--color-ivory)] placeholder:text-gray-500 focus:border-[var(--color-gold)] focus:outline-none"
+            />
           </div>
 
           <button
             type="submit"
-            className="w-full py-3 rounded-lg bg-gradient-to-r from-[var(--color-gold-dim)] to-[var(--color-gold)] text-[var(--color-void)] font-bold text-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-98"
+            disabled={loading}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--color-gold-dim)] to-[var(--color-gold)] text-[var(--color-void)] font-bold text-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer active:scale-98"
           >
-            <span>Preview as {selectedRole.toUpperCase()}</span>
-            <ArrowRight className="w-4 h-4" />
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                <span>Sign In to Console</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </button>
         </form>
 
+        {/* Dev Mode Role Preview Switcher */}
+        {ROLE_PREVIEW_ENABLED && (
+          <form onSubmit={handlePreviewLogin} className="mt-6 pt-6 border-t border-white/10 space-y-3">
+            <div className="bg-[var(--color-void-raised)] p-3 rounded-xl border border-white/5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-gold)] mb-2 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Dev Preview Switcher:</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {ALL_ROLES.map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setSelectedRole(role)}
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold capitalize transition-all ${
+                      selectedRole === role
+                        ? "bg-[var(--color-gold)] text-[var(--color-void)] font-bold shadow-sm"
+                        : "glass-panel text-[var(--color-smoke)] hover:text-white"
+                    }`}
+                  >
+                    {role.replace("_", " ")}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-2 rounded-lg border border-white/10 text-xs font-semibold text-[var(--color-smoke)] hover:text-white hover:bg-white/5 transition-all"
+            >
+              Preview as {selectedRole.toUpperCase()}
+            </button>
+          </form>
+        )}
+
         <div className="mt-6 pt-4 border-t border-white/10 text-center">
           <a
-            href="/home"
+            href="/restaurant"
             className="inline-flex items-center gap-1.5 text-xs text-[var(--color-smoke)] hover:text-[var(--color-gold)] transition-colors"
           >
             <Store className="w-3.5 h-3.5" /> Return to Customer Restaurant Website

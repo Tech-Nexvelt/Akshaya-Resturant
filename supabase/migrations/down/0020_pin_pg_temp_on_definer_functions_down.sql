@@ -1,0 +1,2 @@
+-- Migration 0020 Down: Reset search_path setting on SECURITY DEFINER functions
+-- No-op: search_path setting pinning pg_temp is security best practice and retained.

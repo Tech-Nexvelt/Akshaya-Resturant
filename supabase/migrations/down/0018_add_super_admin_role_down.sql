@@ -1,0 +1,12 @@
+-- Migration 0018 Down: Reversion policy for user_role enum modification
+--
+-- IMPORTANT / ONE-WAY DOOR POLICY:
+-- PostgreSQL enums do NOT support dropping enum values (e.g. ALTER TYPE user_role DROP VALUE 'super_admin'
+-- is not valid PostgreSQL syntax).
+--
+-- Reverting this enum value requires recreating the enum type, dropping dependent defaults,
+-- columns, RLS policies, and triggers, and rebuilding them.
+--
+-- OPERATIONAL POLICY:
+-- To roll back migration 0018 in production, perform a Point-In-Time-Recovery (PITR)
+-- to a restore point preceding migration 0018 execution.

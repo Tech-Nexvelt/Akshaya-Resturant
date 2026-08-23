@@ -19,86 +19,45 @@ export function PaymentsTable() {
   });
 
   const statusClasses = (status: string) => {
-    if (status === "success") return "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
-    if (status === "pending") return "bg-amber-500/20 text-amber-300 border border-amber-500/30";
-    return "bg-red-500/20 text-red-300 border border-red-500/30";
+    if (status === "success") return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+    if (status === "pending") return "bg-amber-50 text-amber-700 border border-amber-200";
+    return "bg-rose-50 text-rose-600 border border-rose-200";
   };
 
   return (
-    <div className="space-y-4">
-      {/* ── Controls ─────────────────────────────────────────────── */}
-      <div className="glass-panel p-4 rounded-xl flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="relative w-full sm:w-96">
-          <CreditCard className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-smoke)]" />
-          <input
-            type="text"
-            placeholder="Search Razorpay Order ID or Payment ID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-[var(--color-void-raised)] border border-[rgba(201,161,90,0.2)] text-sm text-[var(--color-ivory)] focus:outline-none focus:border-[var(--color-gold)] placeholder:text-[var(--color-smoke)]"
-          />
+    <div className="space-y-6 max-w-[1600px] mx-auto">
+      {/* Header Bar */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+        <div>
+          <h2 className="text-lg font-bold text-[#111827]">Payment Reconciliation</h2>
+          <p className="text-xs text-[#6B7280]">Audit Razorpay gateway settlement statuses and payment logs</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-[var(--color-smoke)]">
-          <ShieldCheck className="w-4 h-4 text-[var(--color-gold)]" />
+
+        <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+          <ShieldCheck className="h-4 w-4 text-[#2563EB]" />
           <span>Razorpay UPI Reconciliation</span>
         </div>
       </div>
 
-      {/* ── Responsive Container ─────────────────────────────────── */}
-      <div className="glass-panel rounded-xl overflow-hidden border-[rgba(201,161,90,0.15)]">
-
-        {/* MOBILE CARD VIEW (<768px) */}
-        <div className="block md:hidden divide-y divide-slate-800/80">
-          {filteredPayments.length > 0 ? (
-            filteredPayments.map((pay) => (
-              <div key={pay.id} className="p-4 space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${statusClasses(pay.status)}`}>
-                    {pay.status}
-                  </span>
-                  <span className="font-bold text-[var(--color-ivory)] text-sm">
-                    {formatCurrency(pay.amount)}
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  <div>
-                    <span className="text-[10px] uppercase tracking-wider text-[var(--color-smoke)] block">Razorpay Order ID</span>
-                    <span className="font-mono text-xs text-[var(--color-gold-bright)] break-all">{pay.razorpay_order_id}</span>
-                  </div>
-                  {pay.razorpay_payment_id && (
-                    <div>
-                      <span className="text-[10px] uppercase tracking-wider text-[var(--color-smoke)] block">Payment ID</span>
-                      <span className="font-mono text-xs text-[var(--color-smoke)] break-all">{pay.razorpay_payment_id}</span>
-                    </div>
-                  )}
-                  <div className="text-[11px] text-[var(--color-smoke)]">
-                    {new Date(pay.created_at).toLocaleString("en-IN")}
-                  </div>
-                </div>
-
-                {pay.raw_response && (
-                  <button
-                    onClick={() => setSelectedResponse(pay.raw_response)}
-                    className="flex items-center gap-1.5 text-xs text-[var(--color-gold-bright)] underline font-medium"
-                  >
-                    <Code className="w-3.5 h-3.5" />
-                    View Gateway JSON
-                  </button>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="p-8 text-center text-xs text-[var(--color-smoke)]">
-              No payment records found.
-            </div>
-          )}
+      {/* Table Container */}
+      <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="relative w-64">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9CA3AF]" />
+            <input
+              type="text"
+              placeholder="Search Order ID or Payment ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 w-full rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] pl-8 pr-3 text-xs text-[#111827] focus:border-[#2563EB] focus:outline-none"
+            />
+          </div>
+          <span className="text-xs text-[#6B7280]">Showing {filteredPayments.length} of {payments.length} transactions</span>
         </div>
 
-        {/* DESKTOP TABLE VIEW (≥768px) */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-xs text-[var(--color-ivory)]">
-            <thead className="bg-[var(--color-void-raised)] text-[var(--color-smoke)] uppercase tracking-wider text-[10px] font-bold border-b border-[rgba(201,161,90,0.15)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-[#111827]">
+            <thead className="bg-[#F9FAFB] text-[10px] uppercase font-bold tracking-wider text-[#6B7280] border-b border-[#E5E7EB]">
               <tr>
                 <th className="px-4 py-3">Razorpay Order ID</th>
                 <th className="px-4 py-3">Payment ID</th>
@@ -108,45 +67,45 @@ export function PaymentsTable() {
                 <th className="px-4 py-3 text-right">Gateway Data</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-[#E5E7EB]">
               {filteredPayments.length > 0 ? (
                 filteredPayments.map((pay) => (
-                  <tr key={pay.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-3 font-mono text-[var(--color-gold-bright)] max-w-[160px] truncate" title={pay.razorpay_order_id}>
+                  <tr key={pay.id} className="hover:bg-[#F9FAFB] transition-colors">
+                    <td className="px-4 py-3.5 font-mono font-bold text-[#2563EB]">
                       {pay.razorpay_order_id}
                     </td>
-                    <td className="px-4 py-3 font-mono text-[var(--color-smoke)] max-w-[140px] truncate">
+                    <td className="px-4 py-3.5 font-mono text-[#6B7280]">
                       {pay.razorpay_payment_id || "Pending"}
                     </td>
-                    <td className="px-4 py-3 font-bold text-[var(--color-ivory)]">
+                    <td className="px-4 py-3.5 font-bold text-[#111827]">
                       {formatCurrency(pay.amount)}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${statusClasses(pay.status)}`}>
+                    <td className="px-4 py-3.5">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusClasses(pay.status)}`}>
                         {pay.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[var(--color-smoke)] whitespace-nowrap">
+                    <td className="px-4 py-3.5 text-[#6B7280]">
                       {new Date(pay.created_at).toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3.5 text-right">
                       {pay.raw_response ? (
                         <button
                           onClick={() => setSelectedResponse(pay.raw_response)}
-                          className="inline-flex items-center gap-1 text-[11px] text-[var(--color-gold-bright)] underline hover:text-white"
+                          className="inline-flex items-center gap-1 text-xs font-bold text-[#2563EB] hover:underline cursor-pointer"
                         >
-                          <Code className="w-3.5 h-3.5" />
+                          <Code className="h-3.5 w-3.5" />
                           <span>View JSON</span>
                         </button>
                       ) : (
-                        <span className="text-[10px] text-[var(--color-smoke)] italic">None</span>
+                        <span className="text-[10px] text-[#6B7280] italic">None</span>
                       )}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-[var(--color-smoke)]">
+                  <td colSpan={6} className="px-4 py-8 text-center text-[#6B7280]">
                     No payment records found.
                   </td>
                 </tr>
@@ -156,33 +115,27 @@ export function PaymentsTable() {
         </div>
       </div>
 
-      {/* ── Gateway Response Inspector Modal ─────────────────────── */}
+      {/* Gateway Response Inspector Modal */}
       {selectedResponse && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="glass-panel rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg border-[var(--color-gold)]/40 shadow-2xl flex flex-col max-h-[85dvh] sm:max-h-[80vh]">
-            <div className="flex items-center justify-between border-b border-white/10 p-4 flex-shrink-0">
-              <h4 className="font-display font-semibold text-[var(--color-ivory)] text-base">
-                Gateway Webhook Response
-              </h4>
-              <button
-                onClick={() => setSelectedResponse(null)}
-                aria-label="Close"
-                className="text-[var(--color-smoke)] hover:text-white p-1.5 rounded min-h-[44px] min-w-[44px] flex items-center justify-center"
-              >
-                <X className="w-4 h-4" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3">
+              <h3 className="text-base font-bold text-[#111827]">Gateway Webhook Response</h3>
+              <button onClick={() => setSelectedResponse(null)} className="text-gray-400 hover:text-[#111827] p-1">
+                <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="overflow-y-auto p-4 flex-1">
-              <pre className="bg-[var(--color-void)] p-4 rounded-lg font-mono text-xs text-emerald-400 overflow-x-auto border border-white/10">
-                {JSON.stringify(selectedResponse, null, 2)}
-              </pre>
-            </div>
-            <div className="p-4 border-t border-white/10 flex-shrink-0">
+
+            <pre className="rounded-xl border border-slate-800 bg-slate-900 p-4 font-mono text-xs text-emerald-400 overflow-x-auto leading-relaxed">
+              {JSON.stringify(selectedResponse, null, 2)}
+            </pre>
+
+            <div className="flex justify-end pt-2 border-t border-[#E5E7EB]">
               <button
                 onClick={() => setSelectedResponse(null)}
-                className="w-full py-3 rounded-xl glass-panel text-[var(--color-ivory)] hover:border-[var(--color-gold)] text-xs font-semibold min-h-[48px]"
+                className="h-9 rounded-xl bg-gray-100 px-4 text-xs font-bold text-gray-700 hover:bg-gray-200 cursor-pointer"
               >
-                Close
+                Close Inspector
               </button>
             </div>
           </div>

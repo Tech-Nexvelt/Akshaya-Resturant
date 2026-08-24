@@ -67,14 +67,14 @@ export const CateringHeader = memo(function CateringHeader() {
                   key={key}
                   href={href}
                   aria-current={isActive ? "page" : undefined}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-150 ${
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs whitespace-nowrap shrink-0 transition-all duration-150 ${
                     isActive
                       ? "bg-[#2563EB] text-white shadow-xs font-bold"
-                      : "text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#111827]"
+                      : "text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#111827] font-semibold"
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>{label}</span>
+                  <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span className="whitespace-nowrap">{label}</span>
                 </Link>
               );
             })}
@@ -106,20 +106,20 @@ export const CateringHeader = memo(function CateringHeader() {
         </nav>
 
         {/* Right Phone & Button */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <a
             href={`tel:${cateringContact.phone.replace(/\s/g, "")}`}
-            className="hidden items-center gap-1.5 text-xs font-semibold text-[#111827] hover:text-[#2563EB] transition-colors xl:flex"
+            className="hidden items-center gap-1.5 text-xs font-semibold text-[#111827] hover:text-[#2563EB] transition-colors whitespace-nowrap shrink-0 xl:flex"
           >
-            <Phone className="h-3.5 w-3.5 text-[#2563EB]" aria-hidden="true" />
-            <span>{cateringContact.phone}</span>
+            <Phone className="h-3.5 w-3.5 text-[#2563EB] shrink-0" aria-hidden="true" />
+            <span className="whitespace-nowrap">{cateringContact.phone}</span>
           </a>
 
           <a
             href="#enquiry-form"
-            className="hidden rounded-xl bg-[#2563EB] px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs transition-all hover:bg-[#1D4ED8] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] sm:inline-flex"
+            className="hidden rounded-xl bg-[#2563EB] px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs transition-all hover:bg-[#1D4ED8] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] whitespace-nowrap shrink-0 sm:inline-flex"
           >
-            Enquire Now
+            <span className="whitespace-nowrap">Enquire Now</span>
           </a>
 
           <button

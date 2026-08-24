@@ -132,12 +132,6 @@ export const CartPanel = memo(function CartPanel({ onClose, isDrawer = false }: 
               </span>
             </div>
             <div className="flex justify-between text-xs text-[#6B7280]">
-              <span>Delivery Fee</span>
-              <span className="font-semibold text-[#111827] tabular-nums">
-                {deliveryFee === 0 ? "Free" : formatCurrency(deliveryFee)}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs text-[#6B7280]">
               <span>Packaging Fee</span>
               <span className="font-semibold text-emerald-600 tabular-nums">
                 Free

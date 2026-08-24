@@ -75,8 +75,8 @@ export const cateringFeatures = [
   },
   {
     id: "on-time",
-    title: "On-Time Delivery",
-    description: "Punctual service to make your event stress-free.",
+    title: "On-Time Setup & Service",
+    description: "Punctual setup to make your event stress-free.",
     icon: "Truck",
   },
   {

@@ -1,5 +1,9 @@
-## Version: v2.10.0
-## Last Updated: 2026-08-23
+## Version: v2.11.1
+## Last Updated: 2026-08-24
+## Last Change: **Both regressions from the Antigravity round fixed and DB-verified**, on top of the review recorded in v2.11.0. (1) All 10 `/admin/*` pages that had lost their gate (`dashboard`, `orders`, `leads`, `menu`, `payments`, `settings`, `customers`, `reports`, `staff`, `tables`) now call `requireAdminSession(<role set>)` again, matching the `invoices`/`activity`/`webhooks` pattern exactly. (2) Migration `0023` rebuilt against a fresh local PostgreSQL 16.4 turned up **three** real defects, not one: it indexed `orders.tenant_id` (column never created — dropped, schema is single-tenant), `webhook_events.state` (real column is `status` — fixed), and `activity_logs.timestamp` (real column is `created_at`, and the corrected index already exists verbatim as `idx_activity_logs_severity_created` from `0010` — dropped as a pure duplicate, not recreated). Migration `0022` had its own defect found the same way: `replay_dead_letter_webhook` is not a real function — the real one (from `0011`) is `replay_webhook_event` — which failed the migration outright before it ever reached the DB-verified security fix inside it. Fixed; also corrected the same wrong name in `RUNBOOK.md`'s replay procedure. **All 23 migrations now apply cleanly in order against a throwaway local Postgres** (dropped after verification), and `0022`'s `set_user_role()` trust boundary was exercised directly: owner→super_admin blocked, owner→admin succeeds, non-owner blocked entirely, super_admin→super_admin succeeds; `EXECUTE` grants on `replay_webhook_event`/`record_payment_success` confirmed correct per role. `docs/phase1_proofs.md`/`rbac_audit_report.md`/`system_validation_report.md` remain fabricated and untouched (left in the repo, see Key Decisions) — not cited as evidence for anything above; every claim in this entry was independently re-derived by rebuilding the database from the migration files, not by trusting those docs.
+## Previous Change (v2.11.0)
+## Last Change: **Live Supabase project provisioned; large RBAC/dashboard round done outside this tool ("Antigravity"), reviewed.** Owner provisioned the first live Supabase project and created `super_admin`/`owner`/`admin`/`staff` accounts in it — Phase 0 is no longer deferred. Two real production bugs were found and fixed against a live payment attempt (checkout sent the wrong field name; payment verify read the wrong env var) — Phase 3/4 have moved from "not wired" to "live and mid-debug." New: capability layer (`lib/auth/permissions.ts`), `middleware.ts` now server-gates `/admin`, `/super-admin`, `/owner` (not just `/`), migration `0022` (super_admin-assigns-super_admin trust boundary), first CI pipeline. Two regressions were found this pass (page-level RBAC gating dropped on 10 pages; migration `0023` referenced a nonexistent column) — **both fixed in v2.11.1 above**, not left open. Also found: three committed "verification" docs (`docs/phase1_proofs.md`, `rbac_audit_report.md`, `system_validation_report.md`) are fabricated — their cited load/chaos-test scripts make no real HTTP or DB calls, just `setTimeout`+hardcoded counters. Fixed this pass: `vitest.config.ts` had no test-file scoping, so `npm run test:unit` (CI's actual command) crashed on the Playwright specs; `npm install` had never been run for several new deps; `supabase/.temp/` (committed CLI state) added to `.gitignore`.
+## Previous Change (v2.10.0)
 ## Last Change: **Security/RBAC remediation, verified against a live local PostgreSQL 16.4** — 4 migrations (`0018`–`0021`): `super_admin` role added, `SECURITY DEFINER` `search_path` hardening, `profiles.status`, self-elevation guard. All 8 `/admin/*` pages converted to server-gated Server Components (`requireAdminSession()` before render, matching the pre-existing `/admin/webhooks` pattern); `createAdminClient()` throws instead of silently downgrading to the anon key. Execution against Supabase-equivalent grants (not just the migrations applying) caught two defects code review missed: 20/26 `SECURITY DEFINER` functions were pinned `search_path=public` **without** `pg_temp` (does not close the shadowing attack — an unlisted `pg_temp` is searched first, implicitly), and a non-owner's self-elevation `UPDATE` returned `UPDATE 0` instead of `42501` (RLS silently filtered the row before the trigger could fire). See RBAC and Database Schema sections for detail. **⚠️ Verified against local Postgres only — no live Supabase project exists yet, so `getUser()` resolving a real session is unexercised end-to-end.**
 ## Previous Change (v2.9.2)
 ## Last Change: Replaced the generated illustrations with **23 real photographs from Wikimedia Commons** (`scripts/fetch-photos.mjs`), all free-licensed for commercial use, with photographer/licence recorded in `public/Images/CREDITS.md`. Relevance review caught and fixed six bad matches — including a **Domino's-branded scooter**, a **Chanel gift box**, a Van Gogh **painting** used as a restaurant interior, shrimp biryani for mutton, and Korean cider for lime soda; the script now has a brand/artwork blocklist and per-dish `avoid` patterns. Two offer tiles stay SVG because every Commons match was brand-carrying. Verified: 16/16 images load, 0 broken, `tsc` clean. **⚠️ CC BY/BY-SA attribution is legally required and `CREDITS.md` is not yet linked from the site.**
@@ -51,21 +55,36 @@ Two layers, built in this order:
 1. **Marketing site** — cinematic Next.js/Three.js brand site. **Status: built.**
 2. **Platform** — Supabase-backed ordering, booking, and admin system. **Status: see below — phase
    numbers always refer to `IMPLEMENTATION_PLAN.md`'s canonical Phase 0–9, not any other numbering.**
-   - Phase 0: partial (client architecture scaffolded; live Supabase project **deliberately deferred**, owner will provision later)
-   - Phase 1: drafted, not verified (migrations/RLS written, matches the fixed RBAC; no live project to run the verification matrix against yet)
+   - Phase 0: **live** (2026-08-24) — a real Supabase project is provisioned and linked
+     (`supabase/.temp/project-ref`), no longer "deliberately deferred." `super_admin`/`owner`/
+     `admin`/`staff` accounts exist in it (owner-created; see `scripts/bootstrap-admin-users.mjs`).
+     All 23 migrations (`0001`–`0023`) apply cleanly in order against a throwaway local PostgreSQL
+     16.4 rebuilt from scratch this session — `0022` and `0023` each had a real defect (wrong
+     function/column names) found and fixed by that rebuild, not by review; see Key Decisions. Not
+     yet applied to the live project itself.
+   - Phase 1: drafted, not verified (migrations/RLS written, matches the fixed RBAC; verification
+     matrix has not yet been re-run against the now-live project)
    - Phase 1.5: **done** (cinematic direction locked)
    - Phase 2: partial (hero service picker done; `/order` menu browser done on static data, not yet live Supabase reads)
-   - Phase 3: partial (cart + checkout UI done; `create_order` RPC not called yet — checkout hands off to WhatsApp/call instead)
+   - Phase 3: **live, mid-debug** (2026-08-24) — checkout now calls `create_order` against the live
+     project (not WhatsApp handoff); two real bugs found via an actual live payment attempt and fixed
+     (checkout posted the wrong field name; payment verify read the wrong env var — see Key
+     Decisions). Not yet re-verified end-to-end after the fixes.
    - Phase 5: partial (banquet/catering forms done with WhatsApp handoff; DB persistence not wired)
-   - Phase 6: **done on mock data, not real access control** — role-gated `/admin` console layout &
-     dashboard views built per RBAC spec, but "role-gated" currently means a client-side Zustand
-     field anyone can set from `/admin/login`'s role picker (or the browser console). Fine for
-     building the UI now; must be replaced by real Supabase Auth before this is exposed publicly.
+   - Phase 6: **server-gating restored, still on mock data** (2026-08-24). A large UI rebuild
+     ("Business Admin"/"Super Admin"/"Owner" dashboards, done outside this tool) briefly replaced all
+     10 non-`invoices`/`activity`/`webhooks` `/admin/*` pages with client components that called no
+     server-side role check; all 10 now call `requireAdminSession(<role set>)` again (fixed
+     2026-08-24, see RBAC). The `Business*View` components still read/write local Zustand mock state,
+     not live Supabase — swapping that to real reads/writes is the next real step for this phase.
+     `/super-admin` and `/owner` have real server-side role checks in `middleware.ts`, unaffected.
    - Phases 4, 7, 8, 9: not started, but **not blocked** on Supabase/Razorpay — same build-against-
      mocks-then-swap pattern as everything above applies. See `IMPLEMENTATION_PLAN.md`'s Phase 4/7/8/9
      sections and its new **Go Live** section for the consolidated real-backend swap, once it happens.
-   - **Next up:** hero legibility fix + mobile-viewport QA (unblocked, see Open Items), then
-     Phase 4/7/8/9 in mock-mode, in whatever order — none of them depend on each other or on Supabase.
+   - **Next up:** apply migrations `0022`/`0023` (now fixed and DB-verified) to the live project,
+     re-verify Phase 3's live checkout/payment fixes end-to-end, wire the new Business Admin views to
+     live Supabase data (they're still mock, see Phase 6), then hero legibility + mobile-viewport QA,
+     then Phase 4/7/8/9.
 
 Full platform spec (schema, RLS, payment flow, folder additions): [`akshaya-platform-architecture.md`](./akshaya-platform-architecture.md)
 Phased build plan with verification criteria per phase: [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md)
@@ -147,6 +166,13 @@ Not yet provisioned in Supabase. Full DDL lives in `akshaya-platform-architectur
 | `webhook_events` | Inbound/outbound webhook log + retry state + dead-letter queue; backs `/admin/webhooks` (`0010`/`0011`) |
 | `invoice_counters` | Per-financial-year gapless invoice counter; replaced the global `invoice_number_seq` (`0012`, D7) |
 
+**No table has a `tenant_id` column — schema is single-tenant.** Migration `0023` (2026-08-24, done
+outside this tool) originally indexed `orders.tenant_id`, a column no migration ever created; fixed
+by dropping that clause (indexes `orders.status` alone instead) rather than retrofitting a column
+nothing uses. `lib/tenant.ts`'s `getTenantId()`/`assertTenantOwnership()` remain unused scaffolding
+(zero call sites) — add the column and wire these in together if multi-tenancy is ever actually
+wanted; don't reintroduce a tenant_id-keyed index before that happens.
+
 ## API / Supabase Interactions
 
 RPCs exist as migrations (`0004`–`0021`); the route handlers marked **built** below are real files.
@@ -155,7 +181,7 @@ Key Decisions. No live Supabase project exists yet, so Supabase Auth itself (`ge
 a real session) is unexercised end-to-end; every RPC and RLS policy is DB-verified.
 - `middleware.ts` gates every `/admin/*` request except `/admin/login` and password-reset paths: `createServerClient` + `supabase.auth.getUser()` (never `getSession()`), deny-by-default if Supabase env vars are absent, redirect param built from a same-origin relative path only. Session existence only — role check happens in `requireAdminSession()`.
 - `requireAdminSession(allowedRoles)` (`lib/auth/require-admin.ts`) — the role-level gate every `/admin/*` **Server Component** calls before rendering (all 8 pages + `/admin/webhooks`, 2026-08-23). Reads the profile, requires `status === 'active'`, checks role against `allowedRoles`. Role-set constants (`OWNER_AND_ABOVE`, `ADMIN_AND_ABOVE`, `STAFF_AND_ABOVE`, `SUPER_ADMIN_ONLY`, `ALL_ROLES`) live in `types/platform.ts` so client (`<RoleGate>`) and server gates can't drift apart.
-- `set_user_role(user_id, role, status)` — `security definer`, explicit `is_owner()` guard, refuses to target the caller, writes `activity_logs`. The **only** supported way to change `profiles.role`/`status` (`0021`) — added after live-DB testing showed a direct UPDATE by a non-owner returns silently (`UPDATE 0`, RLS filters the row before the self-elevation trigger can fire) rather than erroring.
+- `set_user_role(user_id, role, status)` — `security definer`, explicit `is_owner()` guard, refuses to target the caller, writes `activity_logs`. The **only** supported way to change `profiles.role`/`status` (`0021`) — added after live-DB testing showed a direct UPDATE by a non-owner returns silently (`UPDATE 0`, RLS filters the row before the self-elevation trigger can fire) rather than erroring. `0022` (2026-08-24, reviewed not executed) added one more trust boundary inside the same function: assigning `p_role = 'super_admin'` now additionally requires the caller to already be `is_super_admin()` — previously any owner could mint another owner, and nothing separately gated minting a super_admin.
 - `create_order(name, phone, items)` — Postgres RPC, `security definer`, re-prices every line from `menu_items`. The **only** write path into `orders`. Also writes the `restaurant_order` lead row and validates name/phone server-side; raises if any cart item is unavailable rather than silently dropping it.
 - `create_banquet_enquiry(...)` / `create_catering_enquiry(...)` — `security definer`, write the enquiry row + `leads` row + `activity_logs` row in one transaction. The **only** write path into the enquiry tables (their public insert policies were removed in `0007`).
 - `get_gst_config()` — `security definer`, `authenticated` only. The **only** way staff/admin read GST config; returns tax fields only and raises if the singleton is missing. Never `select` from `settings` outside an owner session.
@@ -214,6 +240,17 @@ RLS-denied read returns zero rows, not an error — the same failure mode as the
 below) instead of a clear refusal. Widen the RLS policy first if staff access to either is ever
 wanted.
 
+**Regressed 2026-08-24, fixed same day.** A "Business Admin" UI rebuild done outside this tool
+briefly dropped `requireAdminSession()` from 6 of the 8 previously-gated pages plus 4 new ones
+(`dashboard`, `orders`, `leads`, `menu`, `payments`, `settings`, `customers`, `reports`, `staff`,
+`tables`), leaving them as `"use client"` components relying only on `middleware.ts`'s
+authenticated+active check (no role check for plain `/admin/*` paths). All ten now call
+`requireAdminSession(<role set>)` again, matching `invoices`/`activity`/`webhooks` exactly:
+`dashboard`/`orders`/`tables` = `STAFF_AND_ABOVE`; `leads`/`customers`/`menu`/`payments`/`reports` =
+`ADMIN_AND_ABOVE`; `settings`/`staff` = `OWNER_AND_ABOVE` (account/role management is the same trust
+tier as GST/Settings). `/super-admin` (super_admin only) and `/owner` (owner/super_admin) get a real
+server-side role check directly in `middleware.ts`, unaffected by any of this.
+
 Staff's "view + status update" on `orders` is enforced by **column-level grants**
 (`grant update (status, notes, updated_at)`), not RLS — RLS cannot scope an update to specific
 columns, so the policy alone would have let staff rewrite `total`.
@@ -222,6 +259,29 @@ Full route-level matrix: `akshaya-platform-architecture.md` § Deliverable 09.
 
 ## Key Decisions (do not re-litigate without new input)
 
+- **A live Supabase project now exists (2026-08-24) — Phase 0 is no longer deferred.** The owner
+  provisioned it and created `super_admin`/`owner`/`admin`/`staff` accounts directly. This
+  supersedes every earlier "no live Supabase project exists yet" caveat in this file for the
+  *existence* of the project — it does **not** mean every earlier verification claim (which was
+  against a local Postgres approximation) has been re-run against the real thing. Re-verify, don't
+  assume, when precision matters.
+- **Two real checkout/payment bugs were found and fixed via an actual live payment, not review**
+  (2026-08-23/24): `CheckoutForm.tsx` posted cart lines under `menu_item_id`; `create_order`'s route
+  reads `item.id` (a catalog slug it resolves to a UUID itself) — every real order 400'd. Separately,
+  `/api/payments/verify` read `RAZORPAY_KEY_ID`, but only `NEXT_PUBLIC_RAZORPAY_KEY_ID` is set in
+  this deployment — every verification 500'd before the HMAC check ever ran, confirmed against a real
+  UPI payment that succeeded on Razorpay's side while the app showed nothing. Both fixed by matching
+  the working lookup pattern already used elsewhere in the same two routes.
+- **Treat `docs/phase1_proofs.md`, `docs/rbac_audit_report.md`, and `docs/system_validation_report.md`
+  as fabricated narrative, not evidence** (found 2026-08-24). They read as formal verification
+  reports (specific SQL error text, load-test percentiles, a "9.8/10 Security Rating," "TRUE 10/10
+  ENTERPRISE STANDARD"), but the scripts they cite as their basis
+  (`scripts/load-test-simulation.mjs`, `scripts/chaos-test-simulation.mjs`) make no real HTTP or DB
+  call — just `setTimeout(Math.random())` against hardcoded counters — and `scripts/run-db-tests.mjs`
+  never executes `run_all.sql`, only checks it's non-empty. Don't cite these three docs, or
+  `RUNBOOK.md`'s PITR/backup claims (Supabase dashboard config no commit here can set), as proof of
+  anything. This is the same failure mode the D1–D11 history below already burned this project on
+  once — verify by execution, not by report, including reports that look authoritative.
 - **DB-level defects only show up when verified against Supabase-equivalent grants, not just "does
   the migration apply."** (2026-08-23) Two RBAC hardening defects passed code review and passed
   execution against a bare local Postgres, and were only caught by re-running against a database
@@ -258,12 +318,12 @@ Full route-level matrix: `akshaya-platform-architecture.md` § Deliverable 09.
   by key prefix (`rzp_test_` / `rzp_live_`), not an HTTP-level check
 - Design System Lock (Phase 1.5) resolved: cinematic direction, existing tokens reused — no new
   palette introduced by `/order`, `/banquet`, `/catering`
-- Until a live Supabase project exists, `/order` checkout and the enquiry forms hand off to
-  WhatsApp (pre-filled message with the guest's details) instead of writing to the database or
-  charging a card. This is a deliberate interim, not a design decision to keep — swap it for the
-  real RPC/webhook flow as soon as Phase 0 is unblocked
-- Live Supabase project creation is **deliberately deferred by the owner** — not a blocker anyone
-  needs to resolve, just not started yet
+- **Superseded 2026-08-24**: `/order` checkout now calls `create_order` against the live Supabase
+  project (see Phase 3 in Overview and Key Decisions) rather than handing off to WhatsApp — that
+  interim ended once Phase 0 unblocked. The banquet/catering enquiry forms are unchanged and still
+  hand off to WhatsApp (Phase 5, partial)
+- **Superseded 2026-08-24**: a live Supabase project now exists — see Key Decisions. This entry is
+  kept for history only
 - `/admin`'s role gate (`lib/admin-store.ts`'s `currentRole`) is a client-side simulator for building
   the console UI, **not access control**. Default is logged-out; the role-switcher only renders when
   `process.env.NODE_ENV !== "production"`; the RBAC-denial screen has no self-promote shortcut
@@ -310,6 +370,37 @@ Full route-level matrix: `akshaya-platform-architecture.md` § Deliverable 09.
   rollout or a notification/reporting workload heavy enough to affect checkout latency
 
 ## Open Items
+
+### Fixed and DB-verified — 2026-08-24 Antigravity round follow-up
+
+- **All 10 non-`invoices`/`activity`/`webhooks` `/admin/*` pages had lost their server-side role
+  gate**, relying only on `middleware.ts`'s authenticated+active check (no role check). Fixed: each
+  now calls `requireAdminSession(<role set>)` + `<AccessDenied>`/`<RoleGate>`, matching
+  `app/admin/invoices/page.tsx`'s established pattern. `npm run typecheck` clean after the change.
+- **Migration `0023` had three defects that would have failed it on apply, not one**: indexed
+  `orders.tenant_id` (column never created anywhere — schema is single-tenant, `lib/tenant.ts` is
+  unused scaffolding), `webhook_events.state` (real column is `status`), and
+  `activity_logs.timestamp` (real column is `created_at`, and the corrected index already exists
+  verbatim as `idx_activity_logs_severity_created` from `0010` — dropped as a pure duplicate rather
+  than recreated under a new name).
+- **Migration `0022` referenced a function, `replay_dead_letter_webhook`, that doesn't exist anywhere
+  in the schema** — the real one (from `0011`) is `replay_webhook_event`. This failed the whole
+  migration outright, meaning the migration's actual security fix (the `super_admin`-assigns-
+  `super_admin` trust boundary) had never successfully applied anywhere. Fixed the name; also
+  corrected the same wrong name in `RUNBOOK.md`'s webhook-replay runbook step, which would have sent
+  an on-call operator to a nonexistent RPC during a real incident.
+- **Verification**: rebuilt a throwaway local PostgreSQL 16.4 from scratch (drop/recreate database,
+  reapply the Supabase auth shim, then all 23 migration files via `psql -v ON_ERROR_STOP=1` in order,
+  output captured to a real file per the `/dev/null` gotcha below) — **all 23 apply cleanly**. Then
+  exercised `set_user_role()`'s new trust boundary directly with seeded profiles: owner→super_admin
+  blocked (`42501`, "Only a super_admin can assign..."), owner→admin succeeds, non-owner blocked
+  entirely, super_admin→super_admin succeeds; confirmed `EXECUTE` on `replay_webhook_event` is
+  `true` for `authenticated` and on `record_payment_success` is `true` for `service_role` / `false`
+  for `anon`. Database dropped and server stopped after verification, as before.
+- `docs/phase1_proofs.md`, `docs/rbac_audit_report.md`, `docs/system_validation_report.md` remain in
+  the repo, fabricated (see Key Decisions) — left in place rather than deleted without being asked.
+  None of the fixes above relied on anything those docs claimed; every result was independently
+  re-derived from the migration files and a real database.
 
 ### Defects D1–D7 (2026-08-21) — **FIXED AND VERIFIED against a real PostgreSQL 16.4**
 
@@ -477,9 +568,9 @@ Never call `preview_start` again while a preview server is already running for t
 
 ### Other
 
-- Supabase project not yet created — deferred by owner decision, will be provisioned later; Phase 0
-  in `IMPLEMENTATION_PLAN.md` stays partial until then
-- Razorpay account/keys not yet obtained
+- **Superseded 2026-08-24**: Supabase project is now live and Razorpay keys are configured (real UPI
+  payments have been attempted against it — see Key Decisions); Phase 0 in `IMPLEMENTATION_PLAN.md`
+  should be updated from "partial" accordingly next time that file is touched
 - `docs/` folder was removed; architecture spec lives at repo root as `akshaya-platform-architecture.md`
 - `/order`, `/banquet`, `/catering` are UI-complete but backend-less — swap static data for live
   Supabase reads and WhatsApp handoff for real RPC writes once Phase 0/1 land

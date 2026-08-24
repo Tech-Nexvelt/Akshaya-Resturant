@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback, memo } from "react";
-import { ShoppingBag, Menu as MenuIcon, X, UtensilsCrossed, Building2, ChefHat } from "lucide-react";
-import { useCart, cartCount } from "@/store/cart";
-import { restaurantNav } from "@/lib/restaurant-data";
+import { usePathname } from "next/navigation";
+import { useState, useEffect, memo } from "react";
+import { UtensilsCrossed, Building2, ChefHat, Phone, Menu as MenuIcon, X } from "lucide-react";
+import { serviceConfig } from "@/lib/service-config";
 
 const services = [
   { key: "restaurant", label: "Restaurant", href: "/restaurant", Icon: UtensilsCrossed },
@@ -12,40 +12,59 @@ const services = [
   { key: "catering", label: "Catering", href: "/catering", Icon: ChefHat },
 ];
 
-export const RestaurantHeader = memo(function RestaurantHeader() {
-  const lines = useCart((s) => s.lines);
+const banquetNav = [
+  { label: "Home", href: "#home" },
+  { label: "Halls", href: "#halls" },
+  { label: "Facilities", href: "#facilities" },
+  { label: "Packages", href: "#packages" },
+  { label: "Reviews", href: "#reviews" },
+  { label: "Contact", href: "#contact" },
+];
+
+export const BanquetHeader = memo(function BanquetHeader() {
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [active, setActive] = useState("Menu");
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => setMounted(true), []);
-
-  const count = mounted ? cartCount(lines) : 0;
+  // Route-based active initial state logic
+  const [active, setActive] = useState(() => {
+    if (pathname.includes("/halls")) return "Halls";
+    if (pathname.includes("/packages")) return "Packages";
+    return "Home";
+  });
 
   useEffect(() => {
-    const ids = restaurantNav.map((n) => n.href.slice(1));
+    if (pathname.includes("/halls")) {
+      setActive("Halls");
+      return;
+    }
+    if (pathname.includes("/packages")) {
+      setActive("Packages");
+      return;
+    }
+
+    const ids = banquetNav.map((n) => n.href.slice(1));
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
         if (visible) {
-          const match = restaurantNav.find((n) => n.href.slice(1) === visible.target.id);
+          const match = banquetNav.find((n) => n.href.slice(1) === visible.target.id);
           if (match) setActive(match.label);
         }
       },
-      { rootMargin: "-45% 0px -50% 0px", threshold: [0, 0.25, 0.5] }
+      { rootMargin: "-40% 0px -50% 0px", threshold: [0, 0.25] }
     );
+
     ids.forEach((id) => {
       const el = document.getElementById(id);
       if (el) observer.observe(el);
     });
-    return () => observer.disconnect();
-  }, []);
 
-  const openCart = useCallback(() => {
-    window.dispatchEvent(new CustomEvent("open-cart"));
-  }, []);
+    return () => observer.disconnect();
+  }, [pathname]);
+
+  const phoneNum = serviceConfig.banquet?.phone || "919055646464";
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#E5E7EB] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
@@ -59,10 +78,10 @@ export const RestaurantHeader = memo(function RestaurantHeader() {
             <span>Akshaya</span>
           </Link>
 
-          {/* Service Switch Pills */}
+          {/* Service Switcher Pills */}
           <nav aria-label="Services" className="hidden items-center gap-1.5 rounded-full bg-[#F9FAFB] p-1 border border-[#E5E7EB] md:flex">
             {services.map(({ key, label, href, Icon }) => {
-              const isActive = key === "restaurant";
+              const isActive = key === "banquet";
               return (
                 <Link
                   key={key}
@@ -84,7 +103,7 @@ export const RestaurantHeader = memo(function RestaurantHeader() {
 
         {/* Section Navigation Links (Desktop) */}
         <nav aria-label="Sections" className="hidden items-center gap-6 lg:flex">
-          {restaurantNav.map((item) => {
+          {banquetNav.map((item) => {
             const isActive = active === item.label;
             return (
               <a
@@ -106,26 +125,21 @@ export const RestaurantHeader = memo(function RestaurantHeader() {
           })}
         </nav>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={openCart}
-            aria-label={`Open cart, ${count} item${count === 1 ? "" : "s"}`}
-            className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-[#E5E7EB] bg-white text-[#111827] transition-all hover:bg-[#F9FAFB] hover:border-[#2563EB] hover:text-[#2563EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] cursor-pointer"
+        {/* Right Phone & Reserve Button */}
+        <div className="flex items-center gap-3 shrink-0">
+          <a
+            href={`tel:+${phoneNum}`}
+            className="hidden items-center gap-1.5 text-xs font-semibold text-[#111827] hover:text-[#2563EB] transition-colors whitespace-nowrap shrink-0 xl:flex"
           >
-            <ShoppingBag className="h-5 w-5" aria-hidden="true" />
-            {count > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#2563EB] px-1 text-[10px] font-bold text-white shadow-xs">
-                {count}
-              </span>
-            )}
-          </button>
+            <Phone className="h-3.5 w-3.5 text-[#2563EB] shrink-0" aria-hidden="true" />
+            <span className="whitespace-nowrap">+91 90556 46464</span>
+          </a>
 
           <a
-            href="#menu"
+            href="#enquiry-form"
             className="hidden rounded-xl bg-[#2563EB] px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs transition-all hover:bg-[#1D4ED8] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] whitespace-nowrap shrink-0 sm:inline-flex"
           >
-            <span className="whitespace-nowrap">Order Online Now</span>
+            <span className="whitespace-nowrap">Reserve Banquet Hall</span>
           </a>
 
           <button
@@ -139,7 +153,7 @@ export const RestaurantHeader = memo(function RestaurantHeader() {
         </div>
       </div>
 
-      {/* Mobile Drawer Navigation */}
+      {/* Mobile Drawer */}
       {mobileOpen && (
         <div className="border-t border-[#E5E7EB] bg-white lg:hidden">
           <nav className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
@@ -150,7 +164,7 @@ export const RestaurantHeader = memo(function RestaurantHeader() {
                   href={href}
                   onClick={() => setMobileOpen(false)}
                   className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                    key === "restaurant"
+                    key === "banquet"
                       ? "bg-[#2563EB] text-white font-bold"
                       : "bg-[#F3F4F6] text-[#6B7280]"
                   }`}
@@ -162,7 +176,7 @@ export const RestaurantHeader = memo(function RestaurantHeader() {
             </div>
 
             <ul className="grid grid-cols-2 gap-1.5">
-              {restaurantNav.map((item) => (
+              {banquetNav.map((item) => (
                 <li key={item.label}>
                   <a
                     href={item.href}
@@ -176,11 +190,11 @@ export const RestaurantHeader = memo(function RestaurantHeader() {
             </ul>
 
             <a
-              href="#menu"
+              href="#enquiry-form"
               onClick={() => setMobileOpen(false)}
               className="mt-4 flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#2563EB] px-5 py-3 text-center text-xs font-bold text-white shadow-sm hover:bg-[#1D4ED8] sm:hidden"
             >
-              Order Online Now
+              Reserve Banquet Hall
             </a>
           </nav>
         </div>

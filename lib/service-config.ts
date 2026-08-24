@@ -27,9 +27,9 @@ export const serviceConfig: Record<ServiceType, ServiceConfigItem> = {
     title: "Restaurant",
     subtitle: "Authentic Telangana dining & online ordering",
     description:
-      "Hand-picked spices, time-honored recipes, and signature Telangana biryanis. Dine in or order directly for fast delivery across Siddipet.",
+      "Hand-picked spices, time-honored recipes, and signature Telangana biryanis. Dine in or order directly for takeaway and dining across Siddipet.",
     phone: "919666878787",
-    meta: "Authentic Multi-Cuisine · Fast Delivery",
+    meta: "Authentic Multi-Cuisine · Dine-In & Takeaway",
     href: "/restaurant",
     ctaText: "Order Online Now",
     showMenu: true,

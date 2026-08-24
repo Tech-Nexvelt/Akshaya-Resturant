@@ -1,43 +1,157 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAdminStore } from "@/lib/admin-store";
-import { ALL_ROLES, UserRole } from "@/types/platform";
-import { ShieldCheck, ArrowRight, Store, Lock, AlertCircle, Loader2 } from "lucide-react";
+import { UserRole } from "@/types/platform";
+import { Mail, Lock, Loader2 } from "lucide-react";
+import { LoginLayout } from "@/components/auth/LoginLayout";
+import { LoginCard } from "@/components/auth/LoginCard";
+import { InputField } from "@/components/auth/InputField";
+import { AuthButton } from "@/components/auth/AuthButton";
 
-const ROLE_PREVIEW_ENABLED = process.env.NODE_ENV !== "production";
+// Regular expression for client-side email format validation
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams?.get("redirect");
-  const authError = searchParams?.get("error");
+  const urlError = searchParams?.get("error");
 
   const { setRole } = useAdminStore();
-  const [selectedRole, setSelectedRole] = useState<UserRole>("owner");
+
+  // Refs for auto-focusing on fields with errors
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+
+  // Form State
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+
+  // Flow State
+  const [checkingSession, setCheckingSession] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(
-    authError === "auth-unavailable"
+  const [globalError, setGlobalError] = useState<string | null>(
+    urlError === "auth-unavailable"
       ? "Authentication system is currently offline."
-      : authError === "account-inactive"
+      : urlError === "account-inactive"
       ? "Your account has been deactivated or suspended."
+      : urlError === "unauthorized"
+      ? "You do not have permission to access that resource."
       : null
   );
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
-  // Real Supabase Auth login
-  const handleRealLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || !password) {
-      setErrorMsg("Please enter both email and password.");
-      return;
+  // 1. AUTO-CHECK ACTIVE SESSION ON PAGE LOAD
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkExistingSession() {
+      try {
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        if (!url || !anonKey) {
+          if (isMounted) setCheckingSession(false);
+          return;
+        }
+
+        const supabase = createBrowserClient(url, anonKey);
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user && isMounted) {
+          // Fetch user profile role to determine redirect
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role, status")
+            .eq("id", session.user.id)
+            .single();
+
+          if (profile && profile.status === "active") {
+            const role = profile.role as UserRole;
+            setRole(role);
+
+            // Instant redirect based on user role
+            let targetRoute = "/admin/dashboard";
+            if (redirectPath && redirectPath.startsWith("/")) {
+              targetRoute = redirectPath;
+            } else if (role === "super_admin") {
+              targetRoute = "/super-admin";
+            } else if (role === "owner") {
+              targetRoute = "/owner";
+            }
+
+            router.replace(targetRoute);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Session verification check error:", err);
+      } finally {
+        if (isMounted) setCheckingSession(false);
+      }
     }
 
+    checkExistingSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [redirectPath, router, setRole]);
+
+  // Autofocus email input on initial mount after session check completes
+  useEffect(() => {
+    if (!checkingSession) {
+      emailInputRef.current?.focus();
+    }
+  }, [checkingSession]);
+
+  // 2. CLIENT-SIDE VALIDATION
+  const validateForm = (): boolean => {
+    const errors: { email?: string; password?: string } = {};
+
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      errors.email = "Email address is required.";
+    } else if (!EMAIL_REGEX.test(cleanEmail)) {
+      errors.email = "Please enter a valid email address (e.g. name@company.com).";
+    }
+
+    if (!password) {
+      errors.password = "Password is required.";
+    } else if (password.length < 6) {
+      errors.password = "Password must be at least 6 characters.";
+    }
+
+    setFieldErrors(errors);
+
+    // UX: Shift focus to the first invalid field
+    if (errors.email) {
+      emailInputRef.current?.focus();
+      return false;
+    }
+    if (errors.password) {
+      passwordInputRef.current?.focus();
+      return false;
+    }
+
+    return true;
+  };
+
+  // 3. SUBMIT LOGIN HANDLER
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return; // Prevent double submits
+
+    setGlobalError(null);
+
+    // Run client-side validation
+    if (!validateForm()) return;
+
     setLoading(true);
-    setErrorMsg(null);
 
     try {
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -48,168 +162,158 @@ export default function AdminLoginPage() {
       }
 
       const supabase = createBrowserClient(url, anonKey);
+
+      // Perform Supabase Authentication call
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
       if (error) {
-        throw new Error(error.message || "Invalid credentials.");
-      }
-
-      if (data.user) {
-        // Query profile for role routing
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, status")
-          .eq("id", data.user.id)
-          .single();
-
-        if (profile?.role) {
-          setRole(profile.role as UserRole);
-
-          if (redirectPath) {
-            router.push(redirectPath);
-          } else if (profile.role === "super_admin") {
-            router.push("/super-admin");
-          } else if (profile.role === "owner") {
-            router.push("/owner");
-          } else {
-            router.push("/admin/dashboard");
-          }
-          return;
+        let userFacingError = "Invalid email or password. Please verify your credentials.";
+        if (error.message.includes("Invalid login credentials")) {
+          userFacingError = "Invalid email address or password.";
+        } else if (error.message.includes("Email not confirmed")) {
+          userFacingError = "Your email address has not been verified yet.";
+        } else if (error.message.includes("Failed to fetch") || error.status === 0) {
+          userFacingError = "Network error. Please check your internet connection.";
         }
+        throw new Error(userFacingError);
       }
 
-      router.push("/admin/dashboard");
+      if (!data.user) {
+        throw new Error("Authentication response contained no user session.");
+      }
+
+      // Fetch user profile & role for authorization
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role, status")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        throw new Error("Unable to retrieve user profile credentials.");
+      }
+
+      if (profile.status !== "active") {
+        await supabase.auth.signOut();
+        throw new Error("Your account has been suspended or deactivated.");
+      }
+
+      const role = profile.role as UserRole;
+      setRole(role);
+
+      // Determine redirect target
+      let targetRoute = "/admin/dashboard";
+      if (redirectPath && redirectPath.startsWith("/")) {
+        targetRoute = redirectPath;
+      } else if (role === "super_admin") {
+        targetRoute = "/super-admin";
+      } else if (role === "owner") {
+        targetRoute = "/owner";
+      }
+
+      // Fast perception transition to authorized dashboard
+      router.push(targetRoute);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Authentication failed.");
-    } finally {
+      const message = err instanceof Error ? err.message : "An unexpected error occurred.";
+      setGlobalError(message);
       setLoading(false);
     }
   };
 
-  // Preview login for dev mode
-  const handlePreviewLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ROLE_PREVIEW_ENABLED) return;
-    setRole(selectedRole);
-    router.push("/admin/dashboard");
-  };
+  // If checking active session on initial page load, present sleek minimal loader shell
+  if (checkingSession) {
+    return (
+      <LoginLayout>
+        <div className="w-full max-w-[420px] bg-white border border-[#E5E7EB] rounded-[16px] p-10 shadow-[0_10px_30px_rgba(0,0,0,0.04)] text-center flex flex-col items-center justify-center space-y-4">
+          <Loader2 className="w-8 h-8 text-[#2563EB] animate-spin" />
+          <p className="text-xs font-medium text-slate-500">Verifying session...</p>
+        </div>
+      </LoginLayout>
+    );
+  }
 
   return (
-    <div className="min-h-[85vh] flex flex-col items-center justify-center p-4">
-      <div className="glass-panel p-8 rounded-2xl max-w-md w-full border-[var(--color-gold)]/30 shadow-2xl animate-fade-up">
-        {/* Brand Header */}
-        <div className="text-center mb-6">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[var(--color-gold-dim)] to-[var(--color-gold)] flex items-center justify-center font-display font-bold text-[var(--color-void)] text-2xl mx-auto mb-3 shadow-lg">
-            A
-          </div>
-          <h2 className="text-2xl font-display font-bold text-[var(--color-ivory)]">
-            Akshaya Staff Portal
-          </h2>
-          <p className="text-xs text-[var(--color-smoke)] mt-1">
-            Sign in with your staff credentials to access the console
-          </p>
-        </div>
-
-        {errorMsg && (
-          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        {/* Real Sign In Form */}
-        <form onSubmit={handleRealLogin} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-[var(--color-ivory)] mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="staff@akshaya.com"
-              className="w-full h-10 rounded-xl border border-white/10 bg-[var(--color-void-raised)] px-3 text-xs text-[var(--color-ivory)] placeholder:text-gray-500 focus:border-[var(--color-gold)] focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-[var(--color-ivory)] mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full h-10 rounded-xl border border-white/10 bg-[var(--color-void-raised)] px-3 text-xs text-[var(--color-ivory)] placeholder:text-gray-500 focus:border-[var(--color-gold)] focus:outline-none"
-            />
-          </div>
-
-          <button
-            type="submit"
+    <LoginLayout>
+      <LoginCard
+        title="Welcome Back"
+        subtitle="Sign in to access your admin console"
+        error={globalError}
+      >
+        <form onSubmit={handleLogin} noValidate className="space-y-4">
+          {/* Email Input */}
+          <InputField
+            id="admin-email"
+            label="Email Address"
+            type="email"
+            placeholder="admin@akshaya.com"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (fieldErrors.email) {
+                setFieldErrors((prev) => ({ ...prev, email: undefined }));
+              }
+            }}
+            error={fieldErrors.email}
+            leftIcon={<Mail className="w-4 h-4" />}
+            inputRef={emailInputRef}
+            autoComplete="email"
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--color-gold-dim)] to-[var(--color-gold)] text-[var(--color-void)] font-bold text-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer active:scale-98"
-          >
-            {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <span>Sign In to Console</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </form>
+          />
 
-        {/* Dev Mode Role Preview Switcher */}
-        {ROLE_PREVIEW_ENABLED && (
-          <form onSubmit={handlePreviewLogin} className="mt-6 pt-6 border-t border-white/10 space-y-3">
-            <div className="bg-[var(--color-void-raised)] p-3 rounded-xl border border-white/5">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-gold)] mb-2 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Dev Preview Switcher:</span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {ALL_ROLES.map((role) => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => setSelectedRole(role)}
-                    className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold capitalize transition-all ${
-                      selectedRole === role
-                        ? "bg-[var(--color-gold)] text-[var(--color-void)] font-bold shadow-sm"
-                        : "glass-panel text-[var(--color-smoke)] hover:text-white"
-                    }`}
-                  >
-                    {role.replace("_", " ")}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Password Input */}
+          <InputField
+            id="admin-password"
+            label="Password"
+            type="password"
+            placeholder="••••••••••••"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (fieldErrors.password) {
+                setFieldErrors((prev) => ({ ...prev, password: undefined }));
+              }
+            }}
+            error={fieldErrors.password}
+            leftIcon={<Lock className="w-4 h-4" />}
+            inputRef={passwordInputRef}
+            autoComplete="current-password"
+            disabled={loading}
+          />
 
-            <button
-              type="submit"
-              className="w-full py-2 rounded-lg border border-white/10 text-xs font-semibold text-[var(--color-smoke)] hover:text-white hover:bg-white/5 transition-all"
+          {/* Micro UX Controls: Remember me + Forgot Password */}
+          <div className="flex items-center justify-between pt-1">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-[#E5E7EB] text-[#2563EB] focus:ring-[#2563EB]/20 accent-[#2563EB] cursor-pointer"
+                disabled={loading}
+              />
+              <span className="text-xs text-slate-600 font-medium">
+                Remember me
+              </span>
+            </label>
+
+            <a
+              href="/admin/forgot-password"
+              className="text-xs font-semibold text-[#2563EB] hover:text-[#1D4ED8] transition-colors focus:outline-none focus:underline"
             >
-              Preview as {selectedRole.toUpperCase()}
-            </button>
-          </form>
-        )}
+              Forgot Password?
+            </a>
+          </div>
 
-        <div className="mt-6 pt-4 border-t border-white/10 text-center">
-          <a
-            href="/restaurant"
-            className="inline-flex items-center gap-1.5 text-xs text-[var(--color-smoke)] hover:text-[var(--color-gold)] transition-colors"
-          >
-            <Store className="w-3.5 h-3.5" /> Return to Customer Restaurant Website
-          </a>
-        </div>
-      </div>
-    </div>
+          {/* CTA Button */}
+          <div className="pt-2">
+            <AuthButton loading={loading} disabled={loading}>
+              Sign In to Console
+            </AuthButton>
+          </div>
+        </form>
+      </LoginCard>
+    </LoginLayout>
   );
 }

@@ -128,21 +128,8 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // 4. Returning user redirect at "/"
-  if (pathname === "/") {
-    const entry = request.cookies.get(ENTRY_COOKIE)?.value;
-    const destination = entry ? ENTRY_DESTINATION[entry] : undefined;
-
-    if (destination) {
-      const targetUrl = new URL(destination, request.url);
-      request.nextUrl.searchParams.forEach((value: string, key: string) => {
-        targetUrl.searchParams.set(key, value);
-      });
-      const redirectRes = NextResponse.redirect(targetUrl, 302);
-      redirectRes.headers.set("x-request-id", requestId);
-      return redirectRes;
-    }
-  }
+  // 4. Root landing page always renders service selection directly
+  // (Cookie redirect removed so users always see the entry selection cards at "/")
 
   const res = NextResponse.next({ request: { headers: requestHeaders } });
   res.headers.set("x-request-id", requestId);

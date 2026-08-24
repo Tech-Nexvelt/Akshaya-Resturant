@@ -1,8 +1,12 @@
+import React from "react";
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { offers } from "@/lib/restaurant-data";
+import { offers, getActiveOffers } from "@/lib/restaurant-data";
 import { OfferCard } from "./OfferCard";
 
 export function OffersSection() {
+  const activeOffers = getActiveOffers(offers).slice(0, 4);
+
   return (
     <section id="offers" className="scroll-mt-20 bg-[#EFF6FF] py-14 border-t border-[#DBEAFE]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -16,16 +20,17 @@ export function OffersSection() {
             </h2>
           </div>
 
-          <a
-            href="#menu"
-            className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-[#2563EB] hover:text-[#1D4ED8] transition-colors"
+          <Link
+            href="/offers"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#2563EB] hover:text-[#1D4ED8] transition-colors group"
           >
-            View All Offers &rarr;
-          </a>
+            <span>View All Offers</span>
+            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+          </Link>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {offers.map((offer) => (
+          {activeOffers.map((offer) => (
             <OfferCard key={offer.id} offer={offer} />
           ))}
         </div>

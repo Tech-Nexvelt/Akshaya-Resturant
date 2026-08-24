@@ -191,3 +191,141 @@ textarea {
 :focus:not(:focus-visible) {
   outline: none;
 }
+
+/* ── Global Mobile-First Design System Utilities ─────────────────────────── */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.5rem; /* h-10 (40px) on mobile */
+  padding-left: 1rem;
+  padding-right: 1rem;
+  font-size: 0.875rem; /* text-sm (14px) on mobile */
+  font-weight: 700;
+  border-radius: 0.5rem; /* rounded-lg (8px) on mobile */
+  background-color: #2563EB;
+  color: #FFFFFF;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  user-select: none;
+}
+
+@media (min-width: 768px) {
+  .btn-primary {
+    height: 3rem; /* md:h-12 (48px) on desktop */
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    font-size: 1rem; /* md:text-base (16px) on desktop */
+    border-radius: 0.75rem; /* md:rounded-xl (12px) on desktop */
+  }
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.5rem; /* h-10 */
+  padding-left: 1rem;
+  padding-right: 1rem;
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 600;
+  border-radius: 0.5rem;
+  border: 1px solid #E5E7EB;
+  background-color: #FFFFFF;
+  color: #111827;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+@media (min-width: 768px) {
+  .btn-secondary {
+    height: 3rem; /* md:h-12 */
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    font-size: 1rem; /* md:text-base */
+    border-radius: 0.75rem;
+  }
+}
+
+.input-mobile-first {
+  height: 2.5rem; /* h-10 */
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  font-size: 0.875rem; /* text-sm */
+  border-radius: 0.5rem;
+  border: 1px solid #E5E7EB;
+  background-color: #FFFFFF;
+  color: #111827;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+}
+
+@media (min-width: 768px) {
+  .input-mobile-first {
+    height: 3rem; /* md:h-12 */
+    padding-left: 1rem;
+    padding-right: 1rem;
+    font-size: 1rem; /* md:text-base */
+    border-radius: 0.75rem;
+  }
+}
+
+.card-mobile-first {
+  padding: 1rem; /* p-4 on mobile */
+  border-radius: 0.5rem; /* rounded-lg on mobile */
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+}
+
+@media (min-width: 768px) {
+  .card-mobile-first {
+    padding: 1.5rem; /* md:p-6 on desktop */
+    border-radius: 0.75rem; /* md:rounded-xl on desktop */
+  }
+}
+
+.heading-mobile-first {
+  font-size: 1.25rem; /* text-xl */
+  line-height: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 640px) {
+  .heading-mobile-first {
+    font-size: 1.5rem; /* sm:text-2xl */
+    line-height: 2rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .heading-mobile-first {
+    font-size: 1.875rem; /* md:text-3xl */
+    line-height: 2.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .heading-mobile-first {
+    font-size: 2.25rem; /* lg:text-4xl */
+    line-height: 2.5rem;
+  }
+}
+
+.btn-group-mobile-first {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 0.75rem; /* gap-3 */
+}
+
+@media (min-width: 768px) {
+  .btn-group-mobile-first {
+    flex-direction: row;
+    width: auto;
+    gap: 1rem; /* md:gap-4 */
+  }
+}

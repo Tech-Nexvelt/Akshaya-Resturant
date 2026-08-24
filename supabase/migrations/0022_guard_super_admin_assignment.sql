@@ -72,5 +72,8 @@ GRANT EXECUTE ON FUNCTION record_webhook_event TO service_role;
 REVOKE EXECUTE ON FUNCTION update_webhook_outcome FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION update_webhook_outcome TO service_role;
 
-REVOKE EXECUTE ON FUNCTION replay_dead_letter_webhook FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION replay_dead_letter_webhook TO authenticated, service_role;
+-- NOTE: the actual function (0011) is named replay_webhook_event, not
+-- replay_dead_letter_webhook — this migration originally referenced a name that
+-- doesn't exist anywhere in the schema, which failed the migration outright.
+REVOKE EXECUTE ON FUNCTION replay_webhook_event FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION replay_webhook_event TO authenticated, service_role;

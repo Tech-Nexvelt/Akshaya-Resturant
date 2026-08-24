@@ -47,11 +47,14 @@ Alert emitted for `webhook_events` in `dead_letter` state (`retry_count >= 5`).
 2. Filter table by status `dead_letter`.
 3. Review the `last_error` field to identify root cause (e.g. transient DB lock, service key unavailability).
 4. Resolve underlying issue (e.g. restore service key, fix network outage).
-5. Click **Replay Event** button, or execute SQL:
+5. Click **Replay Event** button, or execute SQL (note: the RPC is `replay_webhook_event`, keyed
+   by the internal `webhook_events.id` UUID — not the gateway's `external_event_id` string; look
+   it up first if you only have the external ID):
    ```sql
-   SELECT replay_dead_letter_webhook('<EVENT_ID>');
+   SELECT replay_webhook_event('<WEBHOOK_EVENTS.ID>');
    ```
-6. Verify status updates to `processed` and `retry_count` resets.
+6. Verify `retry_count` resets to 0 and `status` moves to `pending` (the next scheduled retry then
+   picks it up and moves it to `processed` on success).
 
 ---
 

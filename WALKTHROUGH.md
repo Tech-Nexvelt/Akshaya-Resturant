@@ -4,7 +4,7 @@
 > Phase 3 partial, Phase 5 partial. See [`PROJECT_MEMORY.md`](./PROJECT_MEMORY.md) for the current
 > status line and [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md) for full phase definitions.
 > **Repository**: `akshaya-restaurant`
-> **Last Updated**: August 21, 2026
+> **Last Updated**: August 24, 2026
 >
 > Section headers below are numbered against `IMPLEMENTATION_PLAN.md`'s canonical Phase 0–9 —
 > earlier revisions of this file used their own 1/2/3 numbering, which didn't match and was
@@ -927,4 +927,207 @@ a live Supabase project — none exists yet (Phase 0 remains owner-deferred). `m
 missing config, correct redirects), but `supabase.auth.getUser()` actually resolving a real user
 session has not been exercised end-to-end. Re-verify items 2–3 of the original audit's verification
 checklist against the real project once it's provisioned.
+
+---
+
+## Live Supabase project provisioned; multi-tenant RBAC dashboards built outside this tool — reviewed and corrected
+
+**2026-08-24.** Between the last session and this one, the owner provisioned the **first live Supabase
+project** (Phase 0's long-standing blocker) and did a large round of feature work using a different
+AI coding tool ("Antigravity") in three commits (`05328fa`, `44ffc7c`, `f7bd1ff`, 2026-08-23/24),
+committed directly with no review from this tool. This entry is that review: what's real and working,
+what regressed, and what turned out to be fabricated.
+
+### What's genuinely new and working
+
+- **Live Supabase project is real**, not aspirational — `supabase/.temp/project-ref` (committed by
+  mistake, see Fixed below) resolves to a real linked project. The owner has created `super_admin`,
+  `owner`, `admin`, and `staff` profile rows in it (their statement; matches the intent of the new
+  `scripts/bootstrap-admin-users.mjs`, which upserts exactly those four roles). Phase 0 is no longer
+  "deliberately deferred" — see PROJECT_MEMORY.md for the corrected status.
+- **Two real production bugs were found and fixed against a live payment attempt** (commit messages
+  cite "live report, 2026-08-23" and a completed real UPI payment on Razorpay's side):
+  - `components/order/CheckoutForm.tsx` was posting cart lines under `menu_item_id`, but
+    `app/api/orders/create/route.ts` reads `item.id` (the catalog slug) and resolves it to a UUID
+    itself via `menuItemUuid()`. Every real checkout 400'd with "items no longer on the menu."
+    Fixed: send `id`.
+  - `app/api/payments/verify/route.ts` read `RAZORPAY_KEY_ID`, but only
+    `NEXT_PUBLIC_RAZORPAY_KEY_ID` is actually set in this deployment. Every verification 500'd before
+    reaching the HMAC check. Fixed: fall back to the public var, matching
+    `app/api/orders/create/route.ts`'s existing lookup order.
+  - **This means Phase 3/4 (checkout → payment) have moved from "WhatsApp handoff, nothing wired" to
+    "live and mid-debug"** — a real status change from the last recorded snapshot, not a documentation
+    formality.
+- **Migration `0022_guard_super_admin_assignment.sql`** — reviewed, not re-executed this session
+  (no local Postgres harness was rebuilt). Follows the established `SECURITY DEFINER` +
+  `is_owner()`/self-target-block/`activity_logs` pattern from `0021` exactly, and adds one genuine new
+  trust boundary: assigning `p_role = 'super_admin'` now requires the caller already be
+  `is_super_admin()` — previously any owner could mint another owner, and nothing separately gated
+  minting a super_admin. Also (redundantly, belt-and-suspenders on top of `0012`'s D1 fix) re-revokes
+  `EXECUTE` on `record_payment_success`/`record_webhook_event`/`update_webhook_outcome` from
+  `PUBLIC`/`anon`/`authenticated`, and newly grants `replay_dead_letter_webhook` to `authenticated` —
+  which is what actually wires up the "Replay Event" button `RUNBOOK.md` describes for
+  `/admin/webhooks`.
+- **New capability layer**, additive: `lib/auth/permissions.ts` (`Capability` union +
+  `ROLE_CAPABILITIES` matrix + `hasCapability()`) and `requireCapability()` in
+  `lib/auth/require-admin.ts`. Doesn't replace `requireAdminSession()` — layers finer-grained checks
+  on top of it. Not yet called from any page (see Regressions below).
+- **`middleware.ts` consolidated**: previously scoped to `/` only (the entry-gate redirect). Now also
+  server-side gates `/admin/*`, `/super-admin/*`, `/owner/*` in the same function —
+  `supabase.auth.getUser()` + a `profiles.role`/`status` lookup, redirecting unauthenticated or
+  wrong-role requests before any page renders. Verified the original "/" deep-link-bypass requirement
+  (a Key Decision in PROJECT_MEMORY.md) still holds despite the much broader matcher: non-admin,
+  non-`/` paths fall through to the final `NextResponse.next()` untouched. `/super-admin` and `/owner`
+  now have **real server-side role checks**, not just a client-side gate.
+- `.github/workflows/ci.yml` added: typecheck, lint, vitest unit, DB-test-script, on push/PR to
+  `main`. First CI pipeline this project has had.
+
+### Regressions found this session — fixed and DB-verified in a follow-up pass
+
+The user asked to fix these once flagged, so this happened in the same session rather than staying
+open.
+
+- 🔴→✅ **6 of the 8 previously server-gated `/admin/*` pages lost their gate.** The previous session
+  (see "Security & RBAC remediation" above) converted all 8 admin pages to `async` Server Components
+  calling `requireAdminSession()` before rendering — the whole point being that a client-only check
+  runs *after* the payload is already sent. This round's new "Business Admin" UI
+  (`app/admin/dashboard`, `orders`, `leads`, `menu`, `payments`, `settings`, plus four brand-new pages
+  — `customers`, `reports`, `staff`, `tables`) had reverted every one of those six (and never gated
+  the four new ones) to a bare `"use client"` component with **no server-side check at all**. Only
+  `invoices`, `activity`, and `webhooks` still called `requireAdminSession()`. `middleware.ts`'s
+  blanket `/admin/*` check only verifies authenticated + active — it does not check role for plain
+  `/admin/*` paths — so as shipped, a `staff` session could browse to `/admin/settings` or
+  `/admin/payments`, which the RBAC table (and the new capability matrix itself) say it shouldn't
+  reach. Real-world impact was low because `components/admin/views/BusinessSettingsView.tsx` (and the
+  rest of the `Business*View` family) currently read/write only local Zustand mock state, not live
+  Supabase — but this was the exact anti-pattern the project fixed and documented as fixed on
+  2026-08-23, silently reintroduced by wiring the new UI to the old route paths without carrying the
+  gate over. **Fixed**: all 10 pages now call `requireAdminSession(<role set>)` +
+  `<AccessDenied>`/`<RoleGate>`, exactly matching `app/admin/invoices/page.tsx`'s pattern —
+  `dashboard`/`orders`/`tables` = `STAFF_AND_ABOVE`, `leads`/`customers`/`menu`/`payments`/`reports` =
+  `ADMIN_AND_ABOVE`, `settings`/`staff` = `OWNER_AND_ABOVE`. `npm run typecheck` stayed clean
+  throughout.
+- 🔴→✅ **Migration `0023_performance_indexes.sql` had three column-name defects, not one.** Rebuilding
+  a throwaway local PostgreSQL 16.4 from scratch and applying all 23 migrations in order (see
+  Verification below) surfaced all three at once, one per failed re-run:
+  1. `CREATE INDEX idx_orders_tenant_status ON orders(tenant_id, status)` — no migration anywhere adds
+     a `tenant_id` column to `orders` (or any table); `lib/tenant.ts`'s `getTenantId()`/
+     `assertTenantOwnership()` have zero call sites anywhere in `app/`, `lib/`, or `components/` — the
+     "multi-tenant" layer is unused scaffolding, despite `docs/rbac_audit_report.md` describing it as
+     "enforced on 100% of tables." Fixed: indexes `orders.status` alone instead of retrofitting a
+     column nothing uses.
+  2. `CREATE INDEX idx_webhook_events_state_created ON webhook_events(state, created_at DESC)` — the
+     real column is `status` (confirmed via `\d webhook_events`), not `state`. Fixed the name;
+     confirmed this index is *not* redundant with the existing partial index
+     `idx_webhook_events_retry_queue` (0011), which excludes `dead_letter` rows and so can't serve
+     `/admin/webhooks`'s "show me the dead letters" query.
+  3. `CREATE INDEX idx_activity_logs_severity_timestamp ON activity_logs(severity, timestamp DESC)` —
+     the real column is `created_at`, not `timestamp`, and the corrected index already exists
+     verbatim as `idx_activity_logs_severity_created` (from `0010`). Dropped rather than recreated
+     under a new name — it would have been a second index doing the same job, paying a write-time
+     cost on every activity log insert for nothing.
+- 🔴→✅ **Migration `0022_guard_super_admin_assignment.sql` referenced a function that doesn't exist
+  anywhere in the schema.** `REVOKE/GRANT EXECUTE ON FUNCTION replay_dead_letter_webhook` — grepping
+  every migration shows the real function (created in `0011_enterprise_hardening.sql`) is named
+  `replay_webhook_event`. This failed the whole migration outright — meaning `0022`'s actual security
+  fix (blocking a plain owner from minting a `super_admin`) had never successfully applied anywhere,
+  local or live. The same invented name appears in `RUNBOOK.md`'s webhook-replay procedure and in the
+  fabricated `docs/phase1_proofs.md` (see below) — it looks like the name was invented once and then
+  propagated across the runbook, the proof doc, and the migration, rather than checked against the
+  actual schema in any of the three places. Fixed the migration's function name; also fixed
+  `RUNBOOK.md`'s replay step (it now also notes the RPC takes the internal `webhook_events.id` UUID,
+  not the gateway's `external_event_id` string, since that mismatch would have sent an operator
+  chasing the wrong identifier too).
+
+### Fabricated verification docs found in the same commit (do not cite as evidence)
+
+`docs/phase1_proofs.md`, `docs/rbac_audit_report.md`, and `docs/system_validation_report.md` read as
+formal verification reports — specific returned JSON rows, SQL error text, load-test percentiles, a
+"Security Rating: 9.8/10" and "TRUE 10/10 ENTERPRISE STANDARD" certification. Checked against the
+scripts they cite:
+
+- `scripts/load-test-simulation.mjs` and `scripts/chaos-test-simulation.mjs` make **no HTTP or
+  database call at all** — every "request" is `await new Promise(r => setTimeout(r,
+  Math.random() * N))` against hardcoded counters, then the script prints numbers like "413.22
+  req/sec" / "p95: 121ms" / "0.00% error rate." Those figures in `system_validation_report.md` are
+  invented, not measured.
+- `scripts/run-db-tests.mjs` doesn't execute `run_all.sql` — it reads the file, checks it's
+  non-empty, and prints "✅ DB regression suite validated syntax and structure." The specific
+  returned-row JSON quoted in `phase1_proofs.md` (order IDs, webhook retry counts, trigger error
+  text) isn't produced by anything runnable in this repo.
+- `RUNBOOK.md`'s PITR/backup section ("PITR enabled with a 7-day rolling window," "Daily backups...
+  WAL archiving to S3") describes Supabase dashboard configuration — no commit here can set or verify
+  that; treat it as a to-do, not a fact, until checked in the dashboard.
+
+This project has been burned by exactly this failure mode before (see the D1–D11 history above,
+where several "reviewed and correct" fixes were only proven broken by actually executing the SQL).
+Keep treating "the report says it passed" and "it actually ran" as different claims — these three
+docs are the first, not the second. Left in the repo as-is (deleting someone else's committed files
+without being asked felt like the wrong call); PROJECT_MEMORY.md's RBAC/Open Items sections do not
+cite them as evidence for anything.
+
+### Fixed this session
+
+- `vitest.config.ts` had no `include` scoping, so `npm run test:unit` — the exact command
+  `.github/workflows/ci.yml` runs on every push/PR — also collected `tests/e2e/*.spec.ts`
+  (Playwright specs) via vitest's default glob and crashed both e2e suites (`test.describe()`
+  called outside a Playwright runner). **CI would have failed on every run.** Fixed by scoping
+  `include: ["tests/unit/**/*.test.ts"]`. Re-ran: 4/4 suites, 15/15 tests pass.
+- `npm install` had never actually been run after `vitest`, `@playwright/test`, `zod`,
+  `@sentry/nextjs`, `@upstash/ratelimit`, `@upstash/redis` were added to `package.json` — none were
+  present in `node_modules`, so `test`/`test:unit`/`test:e2e`/`bootstrap:staff` would all fail
+  immediately with "command not recognized" on this machine (and did, until this session's
+  `npm install`, which added 296 packages; `npm audit` separately reports 26 unaddressed
+  vulnerabilities, 5 high — not triaged this session).
+- `supabase/.temp/*` (Supabase CLI local state, including the linked project ref) was committed to
+  git in `05328fa`. Not a secret (project refs are visible in dashboard URLs), but it's local machine
+  state and shouldn't be tracked — added `supabase/.temp` to `.gitignore`. The already-tracked files
+  were left in place (removing tracked files is a git-history change outside this session's scope).
+- `npm run typecheck` (`tsc --noEmit`) — **0 errors** across all the new code, both before and after
+  the fixes above.
+
+### Migration verification (follow-up pass, same session)
+
+Rebuilt the project's existing portable local PostgreSQL 16.4 harness (`E:\pgtest`, from the
+2026-08-21/23 sessions — no Docker/WSL on this machine) from a clean slate rather than trusting
+review: dropped and recreated the `akshaya` database, reapplied `E:\pgtest\shim.sql` (the Supabase
+`auth.uid()`/role compatibility layer), then ran all 23 migration files in numeric order via
+`psql -v ON_ERROR_STOP=1`, output captured to a real log file (never `/dev/null` — see this file's
+own documented gotcha about that). First pass failed at `0022` (the `replay_dead_letter_webhook`
+defect); fixed, rebuilt again, failed at `0023` (`state` column); fixed, rebuilt again, failed at
+`0023` again (`timestamp` column, a second defect in the same file the first fix didn't touch);
+fixed, rebuilt a fourth time — **all 23 migrations applied cleanly.**
+
+Then, rather than stopping at "it applies," exercised `0022`'s actual new behavior: seeded an
+`owner`, a plain `staff`, a `super_admin`, and a target profile, and impersonated each via
+`SET request.jwt.claim.sub` (the shim's `auth.uid()` source) to call `set_user_role()` directly:
+
+| Caller | Action | Result |
+|---|---|---|
+| owner | assign `super_admin` to target | **blocked**, `42501` "Only a super_admin can assign the super_admin role." |
+| owner | assign `admin` to target | succeeds, `profiles.role` updated |
+| plain staff | assign anything to target | **blocked**, `42501` "Only an owner or super_admin may assign roles." |
+| super_admin | assign `super_admin` to target | succeeds |
+
+Also confirmed via `has_function_privilege()`: `authenticated` can `EXECUTE`
+`replay_webhook_event` (true), `service_role` can `EXECUTE` `record_payment_success` (true), `anon`
+cannot (false) — the three grants `0022` is supposed to set. Database dropped and the local server
+stopped after verification, matching this project's established practice of not leaving throwaway
+test state lying around.
+
+**Caveat, same as every prior local-Postgres verification in this file**: the shim is not Supabase.
+It doesn't reproduce PostgREST exposure, real JWT claims, or Supabase's exact default grants — so
+this proves the SQL is structurally correct and the RBAC logic behaves as designed, not that it will
+behave identically against the live project. Migrations `0022`/`0023` have not yet been applied to
+the live project itself.
+
+### Not verified this session
+
+- The new Business Admin / Super Admin / Owner dashboards were not opened in a browser this session —
+  review was source-only, both before and after the page-gating fix. Whether they render, and what an
+  actual `staff` vs `admin` vs `owner` session sees now that the gate is back, is unconfirmed.
+- `npm run lint` prompts interactively for first-time ESLint config on this machine and wasn't
+  completed (no strict/base choice made) — lint status is unknown, not passing.
+- Migrations `0022`/`0023` are proven against the local shim, not the live Supabase project (see
+  caveat above) — re-verify there before relying on them in production.
 

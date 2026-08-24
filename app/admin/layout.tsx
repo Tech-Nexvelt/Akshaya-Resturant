@@ -12,6 +12,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { isSidebarCollapsed, isMobileSidebarOpen, setMobileSidebarOpen, setActiveTab } =
     useBusinessAdminStore();
 
+  // Standalone Auth Bypass: login screen must be 100% distraction-free with zero admin chrome/sidebar
+  if (pathname === "/admin/login" || pathname.startsWith("/admin/login/")) {
+    return <>{children}</>;
+  }
+
   useEffect(() => {
     if (pathname.includes("/orders")) setActiveTab("orders");
     else if (pathname.includes("/tables")) setActiveTab("tables");

@@ -24,8 +24,11 @@ const serviceSwitcher: { key: ServiceType; label: string; href: string; icon: ty
 
 export function Navbar({ service }: NavbarProps) {
   const pathname = usePathname();
-  // /restaurant and /catering ship their own headers with section anchors & service switcher
-  const suppressed = pathname === "/restaurant" || pathname === "/catering";
+  // /restaurant, /catering, and /banquet ship their own dedicated headers with section anchors & service switcher
+  const suppressed =
+    pathname === "/restaurant" ||
+    pathname === "/catering" ||
+    pathname.startsWith("/banquet");
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string>("home");
@@ -170,14 +173,14 @@ export function Navbar({ service }: NavbarProps) {
                 <Link
                   key={srv.key}
                   href={srv.href}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs whitespace-nowrap shrink-0 transition-all ${
                     isActive
-                      ? "bg-[#DBEAFE] text-[#2563EB] shadow-xs font-bold"
-                      : "text-[#6B7280] hover:text-[#111827] hover:bg-[#DBEAFE]/40"
+                      ? "bg-[#2563EB] text-white shadow-xs font-bold"
+                      : "text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] font-semibold"
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{srv.label}</span>
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">{srv.label}</span>
                 </Link>
               );
             })}

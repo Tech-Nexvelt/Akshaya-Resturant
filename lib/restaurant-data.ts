@@ -139,10 +139,15 @@ export interface Offer {
   badge: string;
   title: string;
   subtitle: string;
+  description?: string;
+  discountValue?: number;
   code?: string;
   image: string;
   tint: string;
   wash: string;
+  type: "dine-in" | "takeaway" | "general";
+  is_active: boolean;
+  expiry_date: string;
 }
 
 export const offers: Offer[] = [
@@ -150,42 +155,103 @@ export const offers: Offer[] = [
     id: "biryani-special",
     badge: "20% OFF",
     title: "Biryani Special",
-    subtitle: "On all biryanis",
+    subtitle: "On all biryanis & rice items",
+    description: "Enjoy flat 20% discount on all authentic Telangana & Dum biryanis.",
+    discountValue: 20,
     code: "AKSHAYA20",
     image: "/Images/offer-biryani-special.jpg",
     tint: "from-amber-100 to-orange-200",
     wash: "bg-white",
+    type: "general",
+    is_active: true,
+    expiry_date: "2026-12-31T23:59:59Z",
   },
   {
     id: "combo-meals",
     badge: "15% OFF",
-    title: "Combo Meals",
+    title: "Combo Family Feast",
     subtitle: "On orders above ₹499",
+    description: "Get 15% discount on family curry and biryani combo meal packs.",
+    discountValue: 15,
     code: "COMBO15",
     image: "/Images/offer-combo-meals.jpg",
     tint: "from-orange-100 to-red-100",
     wash: "bg-white",
+    type: "takeaway",
+    is_active: true,
+    expiry_date: "2026-11-30T23:59:59Z",
   },
   {
-    id: "free-delivery",
-    badge: "FREE DELIVERY",
-    title: "Free Delivery",
-    subtitle: "On orders above ₹299",
-    image: "/Images/offer-free-delivery.svg",
+    id: "dine-in-special",
+    badge: "COMPLIMENTARY DESSERT",
+    title: "Dine-In Special",
+    subtitle: "Freshly prepared for dining",
+    description: "Special complimentary Gulab Jamun dessert on all dine-in orders above ₹350.",
+    discountValue: 10,
+    code: "DINE10",
+    image: "/Images/offer-combo-meals.jpg",
     tint: "from-sky-100 to-blue-100",
     wash: "bg-white",
+    type: "dine-in",
+    is_active: true,
+    expiry_date: "2026-10-15T23:59:59Z",
   },
   {
     id: "first-order",
     badge: "10% OFF",
-    title: "First Order",
-    subtitle: "For new users",
+    title: "Welcome First Order",
+    subtitle: "For new guest orders",
+    description: "Flat 10% instant discount on your first online order with Akshaya.",
+    discountValue: 10,
     code: "FIRST10",
     image: "/Images/offer-first-order.svg",
     tint: "from-rose-100 to-orange-100",
     wash: "bg-white",
+    type: "general",
+    is_active: true,
+    expiry_date: "2027-01-01T00:00:00Z",
+  },
+  {
+    id: "weekend-tandoor",
+    badge: "25% OFF",
+    title: "Weekend Tandoor Delight",
+    subtitle: "On all kababs & starters",
+    description: "Get 25% OFF on all juicy chicken and paneer kababs every weekend.",
+    discountValue: 25,
+    code: "KABAB25",
+    image: "/Images/chicken-65.jpg",
+    tint: "from-red-100 to-orange-200",
+    wash: "bg-white",
+    type: "dine-in",
+    is_active: true,
+    expiry_date: "2026-12-15T23:59:59Z",
+  },
+  {
+    id: "takeaway-express",
+    badge: "FLAT ₹50 OFF",
+    title: "Takeaway Express",
+    subtitle: "On quick takeaway pickups",
+    description: "Enjoy ₹50 instant savings on any takeaway pickup order above ₹300.",
+    discountValue: 12,
+    code: "PICKUP50",
+    image: "/Images/offer-combo-meals.jpg",
+    tint: "from-sky-100 to-indigo-100",
+    wash: "bg-white",
+    type: "takeaway",
+    is_active: true,
+    expiry_date: "2026-09-30T23:59:59Z",
   },
 ];
+
+/** Filter helper: Returns only active offers whose expiry_date is in the future */
+export function getActiveOffers(allOffers: Offer[] = offers): Offer[] {
+  const now = new Date();
+  return allOffers.filter((offer) => {
+    if (!offer.is_active) return false;
+    const expiry = new Date(offer.expiry_date);
+    return expiry > now;
+  });
+}
 
 export interface Review {
   id: string;
@@ -215,7 +281,7 @@ export const reviews: Review[] = [
     name: "Vikram Reddy",
     avatar: "/Images/avatar-arjun.svg",
     rating: 5,
-    quote: "Best restaurant in town! Fresh, hot and delivered right on time.",
+    quote: "Best restaurant in town! Fresh, hot and prepared right on time.",
   },
 ];
 
@@ -245,8 +311,8 @@ export const galleryShots = [
  *
  * Changing this number means changing the offer copy in `offers` to match.
  */
-export const DELIVERY_FEE = 40;
-export const FREE_DELIVERY_ABOVE: number | null = 299;
+export const DELIVERY_FEE = 0;
+export const FREE_DELIVERY_ABOVE: number | null = null;
 
 export interface CartLineLike {
   id: string;
@@ -264,10 +330,7 @@ export function calculateSavings(lines: CartLineLike[]) {
 }
 
 export function calculateFees(subtotal: number) {
-  const deliveryFee =
-    FREE_DELIVERY_ABOVE !== null && subtotal >= FREE_DELIVERY_ABOVE ? 0 : DELIVERY_FEE;
-  const applied = subtotal > 0 ? deliveryFee : 0;
-  return { deliveryFee: applied, packagingFee: 0, total: subtotal + applied };
+  return { deliveryFee: 0, packagingFee: 0, total: subtotal };
 }
 
 export const restaurantNav = [

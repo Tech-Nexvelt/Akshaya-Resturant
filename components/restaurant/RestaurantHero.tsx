@@ -12,28 +12,28 @@ export function RestaurantHero() {
                 <span>AUTHENTIC MULTI-CUISINE &middot; SINCE 2007</span>
               </p>
 
-              <h1 className="mt-4 font-serif text-3xl font-bold leading-[1.12] tracking-tight text-[#111827] sm:text-4xl lg:text-5xl">
+              <h1 className="mt-3 md:mt-4 font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-[1.15] tracking-tight text-[#111827]">
                 A Legacy of Flavor
                 <br />
                 Served Fresh Daily
               </h1>
 
-              <p className="mt-4 max-w-md text-xs sm:text-sm leading-relaxed text-[#6B7280]">
+              <p className="mt-3 md:mt-4 max-w-md text-xs sm:text-sm md:text-base leading-relaxed text-[#6B7280]">
                 Hand-picked spices, time-honored recipes, and signature Telangana biryanis.
-                Dine in or order directly for fast delivery.
+                Dine in or order directly for takeaway & dining.
               </p>
 
-              <div className="mt-7 flex flex-wrap items-center gap-3">
+              <div className="mt-5 md:mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 <a
                   href="#menu"
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#2563EB] px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-md transition-all hover:bg-[#1D4ED8] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+                  className="inline-flex h-10 md:h-12 items-center justify-center gap-2 rounded-lg md:rounded-xl bg-[#2563EB] px-4 md:px-6 text-sm md:text-base font-bold text-white shadow-md transition-all hover:bg-[#1D4ED8] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]"
                 >
-                  <ShoppingBag className="h-4 w-4" aria-hidden="true" />
+                  <ShoppingBag className="h-4 w-4 md:h-5 md:w-5" aria-hidden="true" />
                   <span>Order Online Now &rarr;</span>
                 </a>
-                <div className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-[#BFDBFE] bg-white px-4 py-3 text-xs sm:text-sm font-semibold text-[#2563EB]">
+                <div className="inline-flex h-10 md:h-12 items-center justify-center gap-1.5 rounded-lg md:rounded-xl border border-[#BFDBFE] bg-white px-3 md:px-4 text-xs md:text-sm font-semibold text-[#2563EB]">
                   <span>&bull;</span>
-                  <span>Fast Delivery &bull; 30&ndash;40 min</span>
+                  <span>Dine-In &bull; Takeaway &bull; Pickup</span>
                 </div>
               </div>
             </div>

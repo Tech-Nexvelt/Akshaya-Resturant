@@ -60,33 +60,33 @@ export function BanquetHero() {
         </p>
 
         {/* Button Row */}
-        <div className="mt-8 flex flex-wrap items-center gap-3">
+        <div className="mt-6 md:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           <a
             href="#enquiry-form"
-            className="inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-[#2563EB] px-6 py-3 text-sm font-bold text-white shadow-lg hover:bg-[#1D4ED8] active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex h-10 md:h-12 items-center justify-center gap-2 rounded-lg md:rounded-xl bg-[#2563EB] px-4 md:px-6 text-sm md:text-base font-bold text-white shadow-lg hover:bg-[#1D4ED8] active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
-            <Calendar className="h-4 w-4" />
+            <Calendar className="h-4 w-4 md:h-5 md:w-5" />
             <span>Check Availability</span>
           </a>
           <a
             href="#enquiry-form"
-            className="inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#111827] shadow-lg hover:bg-gray-100 active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex h-10 md:h-12 items-center justify-center gap-2 rounded-lg md:rounded-xl bg-white px-4 md:px-6 text-sm md:text-base font-bold text-[#111827] shadow-lg hover:bg-gray-100 active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <span>Enquire Now</span>
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
           </a>
         </div>
 
         {/* Input Field: White rounded input field with calendar icon */}
-        <div className="mt-4 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-md w-full max-w-xs transition-shadow hover:shadow-lg">
-          <Calendar className="h-5 w-5 text-[#6B7280] shrink-0" />
+        <div className="mt-4 flex items-center gap-2.5 rounded-lg md:rounded-xl border border-gray-200 bg-white px-3 md:px-4 h-10 md:h-12 shadow-md w-full max-w-xs transition-shadow hover:shadow-lg">
+          <Calendar className="h-4 w-4 md:h-5 md:w-5 text-[#6B7280] shrink-0" />
           <input
             type="date"
             value={date}
             onChange={(e) => handleDateSelect(e.target.value)}
             placeholder="Select Event Date"
             aria-label="Select Event Date"
-            className="bg-transparent text-sm font-medium text-[#111827] placeholder:text-[#9CA3AF] outline-none w-full cursor-pointer"
+            className="bg-transparent text-sm md:text-base font-medium text-[#111827] placeholder:text-[#9CA3AF] outline-none w-full cursor-pointer"
           />
         </div>
       </div>

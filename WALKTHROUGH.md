@@ -4,7 +4,7 @@
 > Phase 3 partial, Phase 5 partial. See [`PROJECT_MEMORY.md`](./PROJECT_MEMORY.md) for the current
 > status line and [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md) for full phase definitions.
 > **Repository**: `akshaya-restaurant`
-> **Last Updated**: August 24, 2026
+> **Last Updated**: August 25, 2026
 >
 > Section headers below are numbered against `IMPLEMENTATION_PLAN.md`'s canonical Phase 0–9 —
 > earlier revisions of this file used their own 1/2/3 numbering, which didn't match and was
@@ -1130,4 +1130,41 @@ the live project itself.
   completed (no strict/base choice made) — lint status is unknown, not passing.
 - Migrations `0022`/`0023` are proven against the local shim, not the live Supabase project (see
   caveat above) — re-verify there before relying on them in production.
+
+---
+
+## Live checkout fix: Razorpay "No key passed" on every attempt
+
+**2026-08-25.** The owner reported every real checkout attempt on the deployed site
+(`akshaya-resturant.vercel.app/restaurant`) failing immediately with Razorpay's "Payment Failed — No
+key passed" screen, before the payment modal ever opened.
+
+### Root cause
+
+`app/api/orders/create/route.ts` returns its payload through the shared `apiSuccess()` helper
+(`lib/api-response.ts`), which nests the actual fields under a `data` key:
+`{ success: true, data: { order_id, order_number, total, razorpay_order_id, key_id } }`.
+`components/order/CheckoutForm.tsx`, however, read the fields straight off the top-level parsed JSON
+(`data.key_id`, `data.total`, `data.razorpay_order_id`, `data.order_id`, `data.order_number`) — a
+mismatch with the response shape, not a missing environment variable. Every one of those fields was
+`undefined` client-side, so the Razorpay options object was built with `key: undefined`, which
+Razorpay's Checkout.js rejects outright with "No key passed" before opening. `/api/payments/verify`
+was unaffected — that route returns a flat (non-`apiSuccess`) response, so its fields were already
+being read correctly.
+
+### Fix
+
+`components/order/CheckoutForm.tsx`: renamed the raw parsed response to `json` and added
+`const data = json.data;` to unwrap the nested payload before constructing the Razorpay `options`
+object. No other files changed — the downstream references (`data.key_id`, `data.order_id`, etc.)
+were already correct once `data` pointed at the right object.
+
+### Verification Result
+
+Ran the dev server locally against the real linked Supabase project and Razorpay **test** keys
+(`.env.local`): added Paneer Butter Masala to the cart, submitted the checkout form with a test
+name/phone, confirmed `POST /api/orders/create` returned `200`, and confirmed the Razorpay checkout
+iframe (`api.razorpay.com/v1/checkout/public`) opened correctly showing the real order total (₹269),
+UPI/Cards/EMI options, and the "Akshaya Restaurant" merchant name — no error, matching the
+pre-existing "Test Mode" banner Razorpay shows for `rzp_test_` keys.
 

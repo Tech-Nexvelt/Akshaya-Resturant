@@ -76,11 +76,16 @@ export function CheckoutForm({ onBack, onDone }: CheckoutFormProps) {
         }),
       });
 
-      const data = await res.json();
+      const json = await res.json();
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Order creation failed");
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Order creation failed");
       }
+
+      // /api/orders/create wraps its payload via apiSuccess(), which nests
+      // fields under `data` — unwrap it here rather than reading json.key_id etc,
+      // which were previously undefined and caused Razorpay's "No key passed" error.
+      const data = json.data;
 
       setReceiptDetails((prev) => ({ ...prev, orderId: data.order_id, orderNumber: data.order_number }));
 

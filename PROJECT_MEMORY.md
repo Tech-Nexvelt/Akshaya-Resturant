@@ -1,5 +1,7 @@
-## Version: v2.11.1
-## Last Updated: 2026-08-24
+## Version: v2.11.2
+## Last Updated: 2026-08-25
+## Last Change: **Live checkout was failing 100% of the time with Razorpay's "No key passed" error** — `CheckoutForm.tsx` read `key_id`/`total`/`razorpay_order_id`/`order_id`/`order_number` straight off the `/api/orders/create` fetch response, but that route returns them nested under `apiSuccess()`'s `data` wrapper (`{success, data: {...}}`), so every field was `undefined` client-side. Fixed by unwrapping `json.data` before building the Razorpay options object. Verified locally: added an item to cart, submitted checkout, confirmed `POST /api/orders/create` returned 200, and the Razorpay iframe opened correctly with the real price and payment options. See Payment Flow and Key Decisions.
+## Previous Change (v2.11.1)
 ## Last Change: **Both regressions from the Antigravity round fixed and DB-verified**, on top of the review recorded in v2.11.0. (1) All 10 `/admin/*` pages that had lost their gate (`dashboard`, `orders`, `leads`, `menu`, `payments`, `settings`, `customers`, `reports`, `staff`, `tables`) now call `requireAdminSession(<role set>)` again, matching the `invoices`/`activity`/`webhooks` pattern exactly. (2) Migration `0023` rebuilt against a fresh local PostgreSQL 16.4 turned up **three** real defects, not one: it indexed `orders.tenant_id` (column never created — dropped, schema is single-tenant), `webhook_events.state` (real column is `status` — fixed), and `activity_logs.timestamp` (real column is `created_at`, and the corrected index already exists verbatim as `idx_activity_logs_severity_created` from `0010` — dropped as a pure duplicate, not recreated). Migration `0022` had its own defect found the same way: `replay_dead_letter_webhook` is not a real function — the real one (from `0011`) is `replay_webhook_event` — which failed the migration outright before it ever reached the DB-verified security fix inside it. Fixed; also corrected the same wrong name in `RUNBOOK.md`'s replay procedure. **All 23 migrations now apply cleanly in order against a throwaway local Postgres** (dropped after verification), and `0022`'s `set_user_role()` trust boundary was exercised directly: owner→super_admin blocked, owner→admin succeeds, non-owner blocked entirely, super_admin→super_admin succeeds; `EXECUTE` grants on `replay_webhook_event`/`record_payment_success` confirmed correct per role. `docs/phase1_proofs.md`/`rbac_audit_report.md`/`system_validation_report.md` remain fabricated and untouched (left in the repo, see Key Decisions) — not cited as evidence for anything above; every claim in this entry was independently re-derived by rebuilding the database from the migration files, not by trusting those docs.
 ## Previous Change (v2.11.0)
 ## Last Change: **Live Supabase project provisioned; large RBAC/dashboard round done outside this tool ("Antigravity"), reviewed.** Owner provisioned the first live Supabase project and created `super_admin`/`owner`/`admin`/`staff` accounts in it — Phase 0 is no longer deferred. Two real production bugs were found and fixed against a live payment attempt (checkout sent the wrong field name; payment verify read the wrong env var) — Phase 3/4 have moved from "not wired" to "live and mid-debug." New: capability layer (`lib/auth/permissions.ts`), `middleware.ts` now server-gates `/admin`, `/super-admin`, `/owner` (not just `/`), migration `0022` (super_admin-assigns-super_admin trust boundary), first CI pipeline. Two regressions were found this pass (page-level RBAC gating dropped on 10 pages; migration `0023` referenced a nonexistent column) — **both fixed in v2.11.1 above**, not left open. Also found: three committed "verification" docs (`docs/phase1_proofs.md`, `rbac_audit_report.md`, `system_validation_report.md`) are fabricated — their cited load/chaos-test scripts make no real HTTP or DB calls, just `setTimeout`+hardcoded counters. Fixed this pass: `vitest.config.ts` had no test-file scoping, so `npm run test:unit` (CI's actual command) crashed on the Playwright specs; `npm install` had never been run for several new deps; `supabase/.temp/` (committed CLI state) added to `.gitignore`.
@@ -204,6 +206,11 @@ a real session) is unexercised end-to-end; every RPC and RLS policy is DB-verifi
 
 Razorpay, UPI intent mode — **no cash/COD path exists anywhere in the schema or UI** (structural enforcement, see Key Decisions). Guest → `create_order` RPC → `/api/payments/create-order` opens Razorpay order → Checkout intent → guest approves in UPI app → **webhook** (not the browser callback) flips `payments.status` + `orders.status`, generates the auto payment receipt, and fires the admin WhatsApp/SMS notification. See sequence diagram in `akshaya-platform-architecture.md` § Deliverable 05 and receipt/notification detail in § Deliverable 10.
 
+`/api/orders/create` returns its payload wrapped by `apiSuccess()` (`{success, data: {...}}`);
+`CheckoutForm.tsx` must read the Razorpay `key`/`total`/`razorpay_order_id`/`order_id`/
+`order_number` off `json.data`, not the raw response — reading it unwrapped was live-broken until
+2026-08-25 (Razorpay's "No key passed" on every attempt, see Key Decisions).
+
 Not yet integrated — no Razorpay keys configured, no webhook endpoint live.
 
 ## UX Principles
@@ -265,13 +272,17 @@ Full route-level matrix: `akshaya-platform-architecture.md` § Deliverable 09.
   *existence* of the project — it does **not** mean every earlier verification claim (which was
   against a local Postgres approximation) has been re-run against the real thing. Re-verify, don't
   assume, when precision matters.
-- **Two real checkout/payment bugs were found and fixed via an actual live payment, not review**
-  (2026-08-23/24): `CheckoutForm.tsx` posted cart lines under `menu_item_id`; `create_order`'s route
-  reads `item.id` (a catalog slug it resolves to a UUID itself) — every real order 400'd. Separately,
-  `/api/payments/verify` read `RAZORPAY_KEY_ID`, but only `NEXT_PUBLIC_RAZORPAY_KEY_ID` is set in
-  this deployment — every verification 500'd before the HMAC check ever ran, confirmed against a real
-  UPI payment that succeeded on Razorpay's side while the app showed nothing. Both fixed by matching
-  the working lookup pattern already used elsewhere in the same two routes.
+- **Three real checkout/payment bugs have now been found and fixed via actual live/local payment
+  attempts, not review** (2026-08-23 to 2026-08-25): `CheckoutForm.tsx` posted cart lines under
+  `menu_item_id`; `create_order`'s route reads `item.id` (a catalog slug it resolves to a UUID
+  itself) — every real order 400'd. Separately, `/api/payments/verify` read `RAZORPAY_KEY_ID`, but
+  only `NEXT_PUBLIC_RAZORPAY_KEY_ID` is set in this deployment — every verification 500'd before the
+  HMAC check ever ran, confirmed against a real UPI payment that succeeded on Razorpay's side while
+  the app showed nothing. Third (2026-08-25): `CheckoutForm.tsx` read `key_id`/`total`/
+  `razorpay_order_id`/`order_id`/`order_number` off the raw `/api/orders/create` response instead of
+  its `apiSuccess()`-nested `data` field, so Razorpay's `key` option was always `undefined` and every
+  checkout attempt failed immediately with "No key passed" — the Razorpay modal never even opened.
+  All three fixed by matching the correct field/wrapper shape already used elsewhere.
 - **Treat `docs/phase1_proofs.md`, `docs/rbac_audit_report.md`, and `docs/system_validation_report.md`
   as fabricated narrative, not evidence** (found 2026-08-24). They read as formal verification
   reports (specific SQL error text, load-test percentiles, a "9.8/10 Security Rating," "TRUE 10/10

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { EntryCards } from "@/components/landing/EntryCards";
 import { HeroBeamsBackground } from "@/components/landing/HeroBeamsBackground";
 import { brand } from "@/lib/data";
@@ -27,13 +28,20 @@ export default function LandingGate() {
 
       {/* ===== LAYER 3: CONTENT ===== */}
       <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 py-8 text-center">
-        <header className="mb-8 text-center sm:mb-10">
+        <header className="mb-8 text-center sm:mb-10 flex flex-col items-center">
           <p className="text-sm font-medium tracking-wide text-blue-600 sm:text-base">
             SIDDIPET&rsquo;S FINEST &middot; SINCE {brand.since}
           </p>
-          <h1 className="mt-4 font-display text-5xl font-semibold tracking-tight text-gray-900 sm:text-6xl md:text-7xl">
-            {brand.name}
-          </h1>
+          <div className="mt-4 flex items-center justify-center">
+            <Image
+              src="/akshaya-logo.png"
+              alt="Akshaya Restaurant Logo"
+              width={340}
+              height={100}
+              className="h-16 sm:h-20 md:h-24 w-auto object-contain drop-shadow-md"
+              priority
+            />
+          </div>
           <p className="mt-3 text-base text-gray-600 max-w-md mx-auto">
             Select your preferred service to continue
           </p>

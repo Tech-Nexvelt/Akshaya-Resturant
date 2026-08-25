@@ -108,12 +108,14 @@ export function OffersPageClient({ initialOffers }: OffersPageClientProps) {
 
           {/* Sort Selector */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1 text-xs font-semibold text-slate-400">
+            <label htmlFor="offers-sort" className="flex items-center gap-1 text-xs font-semibold text-slate-400 cursor-pointer">
               <ArrowUpDown className="w-3.5 h-3.5" />
               <span>Sort:</span>
-            </div>
+            </label>
 
             <select
+              id="offers-sort"
+              name="sortBy"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortType)}
               className="h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 focus:border-[#2563EB] focus:outline-none cursor-pointer"

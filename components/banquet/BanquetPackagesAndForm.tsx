@@ -247,10 +247,13 @@ export function BanquetPackagesAndForm() {
                 {/* Row 1: Full Name / Mobile Number */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-semibold text-[#111827]">
+                    <label htmlFor="pkg-fullName" className="text-[11px] font-semibold text-[#111827]">
                       Full Name <span className="text-red-500">*</span>
                     </label>
                     <input
+                      id="pkg-fullName"
+                      name="fullName"
+                      autoComplete="name"
                       required
                       type="text"
                       placeholder="Your full name"
@@ -260,10 +263,13 @@ export function BanquetPackagesAndForm() {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-semibold text-[#111827]">
+                    <label htmlFor="pkg-mobile" className="text-[11px] font-semibold text-[#111827]">
                       Mobile Number <span className="text-red-500">*</span>
                     </label>
                     <input
+                      id="pkg-mobile"
+                      name="mobile"
+                      autoComplete="tel"
                       required
                       type="tel"
                       placeholder="Your mobile number"
@@ -277,11 +283,13 @@ export function BanquetPackagesAndForm() {
                 {/* Row 2: Event Type / Event Date */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-semibold text-[#111827]">
+                    <label htmlFor="pkg-eventType" className="text-[11px] font-semibold text-[#111827]">
                       Event Type <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <select
+                        id="pkg-eventType"
+                        name="eventType"
                         required
                         value={values.eventType}
                         onChange={(e) => set("eventType", e.target.value)}
@@ -294,12 +302,13 @@ export function BanquetPackagesAndForm() {
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-semibold text-[#111827]">
+                    <label htmlFor="pkg-eventDate" className="text-[11px] font-semibold text-[#111827]">
                       Event Date
                     </label>
                     <div className="relative">
                       <input
-                        id="eventDate"
+                        id="pkg-eventDate"
+                        name="eventDate"
                         type="date"
                         value={values.eventDate}
                         onChange={(e) => set("eventDate", e.target.value)}
@@ -313,10 +322,12 @@ export function BanquetPackagesAndForm() {
                 {/* Row 3: Number of Guests / Budget Range */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-semibold text-[#111827]">
+                    <label htmlFor="pkg-guests" className="text-[11px] font-semibold text-[#111827]">
                       Number of Guests
                     </label>
                     <input
+                      id="pkg-guests"
+                      name="guests"
                       type="number"
                       placeholder="Approx. number of guests"
                       value={values.guests}
@@ -325,11 +336,13 @@ export function BanquetPackagesAndForm() {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-semibold text-[#111827]">
+                    <label htmlFor="pkg-budget" className="text-[11px] font-semibold text-[#111827]">
                       Budget Range
                     </label>
                     <div className="relative">
                       <select
+                        id="pkg-budget"
+                        name="budget"
                         value={values.budget}
                         onChange={(e) => set("budget", e.target.value)}
                         className={selectCls}
@@ -344,10 +357,12 @@ export function BanquetPackagesAndForm() {
 
                 {/* Special Requirements */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-semibold text-[#111827]">
+                  <label htmlFor="pkg-requirements" className="text-[11px] font-semibold text-[#111827]">
                     Special Requirements
                   </label>
                   <textarea
+                    id="pkg-requirements"
+                    name="requirements"
                     rows={3}
                     placeholder="Tell us about your requirements..."
                     value={values.requirements}

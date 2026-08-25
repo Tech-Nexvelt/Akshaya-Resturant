@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect, useCallback, memo } from "react";
 import { ShoppingBag, Menu as MenuIcon, X, UtensilsCrossed, Building2, ChefHat } from "lucide-react";
 import { useCart, cartCount } from "@/store/cart";
@@ -23,24 +24,22 @@ export const RestaurantHeader = memo(function RestaurantHeader() {
   const count = mounted ? cartCount(lines) : 0;
 
   useEffect(() => {
-    const ids = restaurantNav.map((n) => n.href.slice(1));
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) {
-          const match = restaurantNav.find((n) => n.href.slice(1) === visible.target.id);
-          if (match) setActive(match.label);
+    const handleScroll = () => {
+      const sections = restaurantNav.map((n) => n.href.replace("#", ""));
+      for (const id of sections) {
+        const el = document.getElementById(id);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= 120 && rect.bottom >= 120) {
+            setActive(restaurantNav.find((n) => n.href === `#${id}`)?.label || "Menu");
+            break;
+          }
         }
-      },
-      { rootMargin: "-45% 0px -50% 0px", threshold: [0, 0.25, 0.5] }
-    );
-    ids.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const openCart = useCallback(() => {
@@ -51,16 +50,23 @@ export const RestaurantHeader = memo(function RestaurantHeader() {
     <header className="sticky top-0 z-40 border-b border-[#E5E7EB] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Brand & Service Switcher */}
-        <div className="flex items-center gap-4 lg:gap-6">
+        <div className="flex items-center gap-4 lg:gap-6 shrink-0">
           <Link
             href="/"
-            className="flex items-center gap-1 font-serif text-2xl font-bold tracking-tight text-[#111827] sm:text-3xl"
+            className="flex shrink-0 items-center gap-1 font-serif text-2xl font-bold tracking-tight text-[#111827] sm:text-3xl"
           >
-            <span>Akshaya</span>
+            <Image
+              src="/akshaya-logo.png"
+              alt="Akshaya Restaurant Logo"
+              width={140}
+              height={40}
+              className="h-9 w-auto shrink-0 object-contain sm:h-10"
+              priority
+            />
           </Link>
 
           {/* Service Switch Pills */}
-          <nav aria-label="Services" className="hidden items-center gap-1.5 rounded-full bg-[#F9FAFB] p-1 border border-[#E5E7EB] md:flex">
+          <nav aria-label="Services" className="hidden shrink-0 items-center gap-1.5 md:flex">
             {services.map(({ key, label, href, Icon }) => {
               const isActive = key === "restaurant";
               return (

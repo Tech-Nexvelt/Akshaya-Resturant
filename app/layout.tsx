@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
+import { ProductionProtection } from "@/components/common/ProductionProtection";
 
 const display = Cormorant_Garamond({
   subsets: ["latin"],
@@ -48,7 +49,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${display.variable} ${body.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <meta httpEquiv="Content-Security-Policy" content="upgrade-insecure-requests" />
+      </head>
       <body className="antialiased" suppressHydrationWarning>
+        <ProductionProtection />
         <div className="noise-overlay" />
         {children}
       </body>

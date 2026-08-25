@@ -92,10 +92,13 @@ export function BanquetEnquiryForm() {
               {/* Row 1 */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
+                  <label htmlFor="bq-fullName" className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
                     Full Name
                   </label>
                   <input
+                    id="bq-fullName"
+                    name="fullName"
+                    autoComplete="name"
                     required
                     type="text"
                     placeholder="Your full name"
@@ -105,10 +108,13 @@ export function BanquetEnquiryForm() {
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
+                  <label htmlFor="bq-mobile" className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
                     Mobile Number
                   </label>
                   <input
+                    id="bq-mobile"
+                    name="mobile"
+                    autoComplete="tel"
                     required
                     type="tel"
                     placeholder="Your mobile number"
@@ -122,11 +128,13 @@ export function BanquetEnquiryForm() {
               {/* Row 2 */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
+                  <label htmlFor="bq-eventType" className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
                     Event Type
                   </label>
                   <div className="relative">
                     <select
+                      id="bq-eventType"
+                      name="eventType"
                       value={values.eventType}
                       onChange={(e) => set("eventType", e.target.value)}
                       className={selectCls}
@@ -140,11 +148,13 @@ export function BanquetEnquiryForm() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
+                  <label htmlFor="bq-eventDate" className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
                     Event Date
                   </label>
                   <div className="relative">
                     <input
+                      id="bq-eventDate"
+                      name="eventDate"
                       type="date"
                       value={values.eventDate}
                       onChange={(e) => set("eventDate", e.target.value)}
@@ -158,10 +168,12 @@ export function BanquetEnquiryForm() {
               {/* Row 3 */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
+                  <label htmlFor="bq-guests" className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
                     Number of Guests
                   </label>
                   <input
+                    id="bq-guests"
+                    name="guests"
                     type="number"
                     placeholder="Approx. number of guests"
                     value={values.guests}
@@ -170,11 +182,13 @@ export function BanquetEnquiryForm() {
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
+                  <label htmlFor="bq-budget" className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
                     Budget Range
                   </label>
                   <div className="relative">
                     <select
+                      id="bq-budget"
+                      name="budget"
                       value={values.budget}
                       onChange={(e) => set("budget", e.target.value)}
                       className={selectCls}
@@ -191,10 +205,12 @@ export function BanquetEnquiryForm() {
 
               {/* Special Requirements */}
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
+                <label htmlFor="bq-requirements" className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
                   Special Requirements
                 </label>
                 <textarea
+                  id="bq-requirements"
+                  name="requirements"
                   rows={3}
                   placeholder="Tell us about your requirements..."
                   value={values.requirements}

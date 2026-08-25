@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, X, ShoppingBag, Calendar, Users, Utensils, Phone } from "lucide-react";
 import { brand } from "@/lib/data";
@@ -161,7 +162,14 @@ export function Navbar({ service }: NavbarProps) {
             aria-label="Return to Service Selection Gate"
             className="group flex items-center gap-2 font-display text-xl sm:text-2xl font-bold tracking-tight text-[#111827] hover:text-[#2563EB] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] rounded"
           >
-            <span>{brand.name}</span>
+            <Image
+              src="/akshaya-logo.png"
+              alt="Akshaya Logo"
+              width={140}
+              height={40}
+              className="h-9 sm:h-10 w-auto object-contain"
+              priority
+            />
           </Link>
 
           {/* Service Switcher Pills */}

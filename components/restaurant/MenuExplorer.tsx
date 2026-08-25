@@ -67,11 +67,16 @@ export function MenuExplorer() {
           {/* Search bar */}
           <div className="flex items-center gap-3">
             <div className="relative w-full sm:w-72">
+              <label htmlFor="search-dishes-input" className="sr-only">
+                Search dishes
+              </label>
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]"
                 aria-hidden="true"
               />
               <input
+                id="search-dishes-input"
+                name="search"
                 type="search"
                 value={query}
                 onChange={(e) => {

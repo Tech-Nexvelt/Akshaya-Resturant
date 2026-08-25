@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useTransition, memo } from "react";
+import NextImage from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -123,14 +124,15 @@ export const BusinessAdminSidebar = memo(function BusinessAdminSidebar() {
         }`}
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#2563EB] font-black text-white text-lg shadow-sm">
-            <Store className="h-5 w-5" />
-          </div>
+          <NextImage
+            src="/akshaya-logo.png"
+            alt="Akshaya Logo"
+            width={110}
+            height={32}
+            className="h-8 w-auto object-contain"
+          />
           {!isCollapsed && (
             <div className="min-w-0">
-              <div className="font-extrabold text-[#111827] text-sm tracking-tight truncate">
-                Akshaya
-              </div>
               <div className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Restaurant POS
               </div>

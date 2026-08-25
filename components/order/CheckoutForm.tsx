@@ -209,7 +209,7 @@ export function CheckoutForm({ onBack, onDone }: CheckoutFormProps) {
           )}
         </div>
         <p className="max-w-xs text-xs text-[#6B7280] pt-2">
-          Your payment was successfully processed. Kitchen is preparing your order.
+          Your payment was successfully processed. Please tell this receipt number when you visit restaurant for your order.
         </p>
         <button
           onClick={onDone}
@@ -273,8 +273,13 @@ export function CheckoutForm({ onBack, onDone }: CheckoutFormProps) {
 
       <div className="flex flex-col gap-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#6B7280]">Full Name</label>
+          <label htmlFor="checkout-name" className="mb-1 block text-xs font-medium text-[#6B7280]">
+            Full Name
+          </label>
           <input
+            id="checkout-name"
+            name="name"
+            autoComplete="name"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -284,8 +289,13 @@ export function CheckoutForm({ onBack, onDone }: CheckoutFormProps) {
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#6B7280]">Mobile Number (10 digits)</label>
+          <label htmlFor="checkout-phone" className="mb-1 block text-xs font-medium text-[#6B7280]">
+            Mobile Number (10 digits)
+          </label>
           <input
+            id="checkout-phone"
+            name="phone"
+            autoComplete="tel"
             required
             type="tel"
             pattern="[0-9]{10,13}"

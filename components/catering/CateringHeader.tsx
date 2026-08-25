@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect, memo } from "react";
 import { UtensilsCrossed, Building2, ChefHat, Phone, Menu as MenuIcon, X } from "lucide-react";
 import { cateringContact } from "@/lib/catering-data";
@@ -49,17 +50,23 @@ export const CateringHeader = memo(function CateringHeader() {
     <header className="sticky top-0 z-40 border-b border-[#E5E7EB] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Logo & Service Switcher */}
-        <div className="flex items-center gap-4 lg:gap-6">
+        <div className="flex items-center gap-4 lg:gap-6 shrink-0">
           <Link
             href="/"
-            className="flex items-center gap-1 font-display text-xl font-bold tracking-tight text-[#111827] sm:text-2xl"
+            className="flex shrink-0 items-center gap-1 font-display text-xl font-bold tracking-tight text-[#111827] sm:text-2xl"
           >
-            <span>Akshaya</span>
-            <span className="text-[#2563EB] text-sm">✦</span>
+            <Image
+              src="/akshaya-logo.png"
+              alt="Akshaya Catering Logo"
+              width={140}
+              height={40}
+              className="h-9 w-auto shrink-0 object-contain sm:h-10"
+              priority
+            />
           </Link>
 
           {/* Service Switcher Pills */}
-          <nav aria-label="Services" className="hidden items-center gap-1.5 md:flex">
+          <nav aria-label="Services" className="hidden shrink-0 items-center gap-1.5 md:flex">
             {services.map(({ key, label, href, Icon }) => {
               const isActive = key === "catering";
               return (

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { brand, services } from "@/lib/data";
 
@@ -15,9 +16,13 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {/* Brand */}
           <div>
-            <p className="font-display text-2xl tracking-[0.1em] text-ivory">
-              {brand.name.toUpperCase()}
-            </p>
+            <Image
+              src="/akshaya-logo.png"
+              alt="Akshaya Hospitality Group"
+              width={160}
+              height={48}
+              className="h-12 w-auto object-contain brightness-110"
+            />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-smoke">
               Elevating the culinary landscape of {brand.location.split(",")[0]} since {brand.since}.
             </p>

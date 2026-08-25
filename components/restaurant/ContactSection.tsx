@@ -112,8 +112,14 @@ export function ContactSection() {
 
             <form onSubmit={handleSubscribe} className="mt-4 flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
+                <label htmlFor="newsletter-email" className="sr-only">
+                  Email address for newsletter
+                </label>
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
                 <input
+                  id="newsletter-email"
+                  name="email"
+                  autoComplete="email"
                   type="email"
                   required
                   value={email}

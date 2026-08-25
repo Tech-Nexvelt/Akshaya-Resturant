@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, memo } from "react";
 import { UtensilsCrossed, Building2, ChefHat, Phone, Menu as MenuIcon, X } from "lucide-react";
@@ -13,56 +14,37 @@ const services = [
 ];
 
 const banquetNav = [
-  { label: "Home", href: "#home" },
-  { label: "Halls", href: "#halls" },
-  { label: "Facilities", href: "#facilities" },
-  { label: "Packages", href: "#packages" },
-  { label: "Reviews", href: "#reviews" },
-  { label: "Contact", href: "#contact" },
+  { name: "Overview", href: "#overview" },
+  { name: "Halls", href: "#halls" },
+  { name: "Occasions", href: "#occasions" },
+  { name: "Packages", href: "#packages" },
+  { name: "Gallery", href: "#gallery" },
+  { name: "Testimonials", href: "#testimonials" },
 ];
 
 export const BanquetHeader = memo(function BanquetHeader() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  // Route-based active initial state logic
-  const [active, setActive] = useState(() => {
-    if (pathname.includes("/halls")) return "Halls";
-    if (pathname.includes("/packages")) return "Packages";
-    return "Home";
-  });
+  const [active, setActive] = useState("Overview");
 
   useEffect(() => {
-    if (pathname.includes("/halls")) {
-      setActive("Halls");
-      return;
-    }
-    if (pathname.includes("/packages")) {
-      setActive("Packages");
-      return;
-    }
-
-    const ids = banquetNav.map((n) => n.href.slice(1));
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) {
-          const match = banquetNav.find((n) => n.href.slice(1) === visible.target.id);
-          if (match) setActive(match.label);
+    const handleScroll = () => {
+      const sections = banquetNav.map((n) => n.href.replace("#", ""));
+      for (const id of sections) {
+        const el = document.getElementById(id);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= 120 && rect.bottom >= 120) {
+            setActive(banquetNav.find((n) => n.href === `#${id}`)?.name || "Overview");
+            break;
+          }
         }
-      },
-      { rootMargin: "-40% 0px -50% 0px", threshold: [0, 0.25] }
-    );
+      }
+    };
 
-    ids.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-
-    return () => observer.disconnect();
-  }, [pathname]);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const phoneNum = serviceConfig.banquet?.phone || "919055646464";
 
@@ -70,16 +52,23 @@ export const BanquetHeader = memo(function BanquetHeader() {
     <header className="sticky top-0 z-40 border-b border-[#E5E7EB] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Brand & Service Switcher */}
-        <div className="flex items-center gap-4 lg:gap-6">
+        <div className="flex items-center gap-4 lg:gap-6 shrink-0">
           <Link
             href="/"
-            className="flex items-center gap-1 font-serif text-2xl font-bold tracking-tight text-[#111827] sm:text-3xl"
+            className="flex shrink-0 items-center gap-1 font-serif text-2xl font-bold tracking-tight text-[#111827] sm:text-3xl"
           >
-            <span>Akshaya</span>
+            <NextImage
+              src="/akshaya-logo.png"
+              alt="Akshaya Banquet Logo"
+              width={140}
+              height={40}
+              className="h-9 w-auto shrink-0 object-contain sm:h-10"
+              priority
+            />
           </Link>
 
           {/* Service Switcher Pills */}
-          <nav aria-label="Services" className="hidden items-center gap-1.5 rounded-full bg-[#F9FAFB] p-1 border border-[#E5E7EB] md:flex">
+          <nav aria-label="Services" className="hidden shrink-0 items-center gap-1.5 md:flex">
             {services.map(({ key, label, href, Icon }) => {
               const isActive = key === "banquet";
               return (
@@ -104,10 +93,10 @@ export const BanquetHeader = memo(function BanquetHeader() {
         {/* Section Navigation Links (Desktop) */}
         <nav aria-label="Sections" className="hidden items-center gap-6 lg:flex">
           {banquetNav.map((item) => {
-            const isActive = active === item.label;
+            const isActive = active === item.name;
             return (
               <a
-                key={item.label}
+                key={item.name}
                 href={item.href}
                 aria-current={isActive ? "true" : undefined}
                 className={`relative py-1 text-xs sm:text-sm transition-colors ${
@@ -116,7 +105,7 @@ export const BanquetHeader = memo(function BanquetHeader() {
                     : "font-semibold text-[#6B7280] hover:text-[#111827]"
                 }`}
               >
-                {item.label}
+                {item.name}
                 {isActive && (
                   <span className="absolute -bottom-1 left-0 h-0.5 w-full rounded-full bg-[#2563EB]" />
                 )}
@@ -129,7 +118,7 @@ export const BanquetHeader = memo(function BanquetHeader() {
         <div className="flex items-center gap-3 shrink-0">
           <a
             href={`tel:+${phoneNum}`}
-            className="hidden items-center gap-1.5 text-xs font-semibold text-[#111827] hover:text-[#2563EB] transition-colors whitespace-nowrap shrink-0 xl:flex"
+            className="hidden items-center gap-1.5 text-xs font-semibold text-[#111827] hover:text-[#2563EB] transition-colors whitespace-nowrap shrink-0 2xl:flex"
           >
             <Phone className="h-3.5 w-3.5 text-[#2563EB] shrink-0" aria-hidden="true" />
             <span className="whitespace-nowrap">+91 90556 46464</span>
@@ -177,13 +166,13 @@ export const BanquetHeader = memo(function BanquetHeader() {
 
             <ul className="grid grid-cols-2 gap-1.5">
               {banquetNav.map((item) => (
-                <li key={item.label}>
+                <li key={item.name}>
                   <a
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
                     className="block rounded-lg px-3 py-2.5 text-xs font-semibold text-[#111827] hover:bg-[#F3F4F6]"
                   >
-                    {item.label}
+                    {item.name}
                   </a>
                 </li>
               ))}

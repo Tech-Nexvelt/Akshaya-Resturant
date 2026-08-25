@@ -2,6 +2,7 @@
 
 import React from "react";
 import { ShieldCheck, Zap, TrendingUp, Lock } from "lucide-react";
+import Image from "next/image";
 
 interface LoginLayoutProps {
   children: React.ReactNode;
@@ -20,12 +21,14 @@ export function LoginLayout({ children }: LoginLayoutProps) {
         {/* Brand Header */}
         <div className="relative z-10 space-y-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center font-bold text-2xl text-white shadow-xl shadow-blue-950/20">
-              A
-            </div>
-            <span className="font-semibold text-lg tracking-wide text-white/90">
-              Akshaya
-            </span>
+            <Image
+              src="/akshaya-logo.png"
+              alt="Akshaya Logo"
+              width={160}
+              height={48}
+              className="h-12 w-auto object-contain bg-white/95 p-1.5 rounded-xl shadow-lg"
+              priority
+            />
           </div>
 
           <div className="pt-4 max-w-md">

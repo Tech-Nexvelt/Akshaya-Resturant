@@ -1168,3 +1168,63 @@ iframe (`api.razorpay.com/v1/checkout/public`) opened correctly showing the real
 UPI/Cards/EMI options, and the "Akshaya Restaurant" merchant name — no error, matching the
 pre-existing "Test Mode" banner Razorpay shows for `rzp_test_` keys.
 
+---
+
+## Header cleanup: `/banquet`'s logo squish and row overflow above 1024px
+
+**2026-08-25.** Two follow-up reports from the owner: (1) the three-way service-switcher pills
+looked inconsistent across `/restaurant`, `/banquet`, `/catering` — `/catering`'s floated freely
+while `/restaurant` and `/banquet` sat inside an extra gray rounded "capsule" container. (2) On
+`/banquet` specifically, the logo had shrunk to an unrecognizable sliver and the header looked
+"misaligned and clumsy" at normal desktop widths.
+
+### Fix 1 — pill container inconsistency
+
+`RestaurantHeader.tsx` and `BanquetHeader.tsx`'s service-switcher `<nav>` carried
+`rounded-full bg-[#F9FAFB] p-1 border border-[#E5E7EB]` that `CateringHeader.tsx`'s never had.
+Removed it from both so all three headers render the identical floating-pill style. Verified by
+diffing the rendered `className` of the `nav[aria-label="Services"]` element across all three pages
+— now byte-identical (`hidden shrink-0 items-center gap-1.5 md:flex`).
+
+### Fix 2 — logo squish and header overflow
+
+Root cause was two compounding bugs, both only visible at real desktop widths (1024px+), which is
+presumably why they survived review:
+
+1. **No `shrink-0` on the logo.** The logo `<Link>`/`<Image>` and pills `<nav>` were plain flex
+   children with default `flex-shrink: 1`. `BanquetHeader.tsx` carries pre-existing (uncommitted,
+   not from this session) longer nav labels than the other two headers — "Halls & Capacity",
+   "Packages & Enquiry" vs. Restaurant's single words — pushing the header's total content past the
+   viewport width. When flexbox shrank the row to fit, the logo was the first casualty: its `h-9
+   sm:h-10` class pins **height**, but `w-auto` lets **width** float, so shrinking collapsed it to
+   `width: 5.4px` at `height: 40px` — a barely-visible sliver — instead of scaling proportionally.
+2. **The row was still too wide even with the logo protected.** Once `shrink-0` was added to stop
+   the squish, the overflow just moved downstream: at exactly the `xl:` (1280px) breakpoint where
+   the phone number first appears, "Reserve Banquet Hall" was pushed 56px past the viewport edge,
+   producing a horizontal scrollbar on the whole page.
+
+**Fixed**: added `shrink-0` to the logo `Link`, `Image`, and pills `nav` in all three headers
+(`RestaurantHeader.tsx`, `BanquetHeader.tsx`, `CateringHeader.tsx` — applied to all three
+defensively, since they share the exact same structure and Restaurant/Catering are one long nav
+label away from the same bug); shortened the banquet nav display labels back to one word each
+(`"Halls & Capacity"` → `"Halls"`, `"Packages & Enquiry"` → `"Packages"` — the `href`s and the
+actual page section IDs are unchanged, only the header link text); and moved the banquet phone
+number's visibility from `xl:flex` (1280px) to `2xl:flex` (1536px), since that element alone was
+what tipped the row over budget at common laptop widths.
+
+### Verification Result
+
+Checked `getBoundingClientRect()` on the logo image, the "Reserve Banquet Hall" button, and
+`document.body.scrollWidth` vs. `window.innerWidth` at three widths on `/banquet`:
+
+| Viewport | Logo size | Reserve button right edge | Page horizontal scroll |
+|---|---|---|---|
+| 1280px (before fix) | **5.4 × 40px** (squished) | 1335.9px (**56px past edge**) | **yes** |
+| 1280px (after fix) | 120 × 40px (correct 3:1 ratio) | 1242.4px (fits) | no |
+| 1440px | 120 × 40px | fits | no |
+| 1920px | 120 × 40px, phone number visible | fits | no |
+
+Also re-checked `/restaurant` at 1280px post-fix (same `shrink-0` change applied there): logo
+120 × 40px, no page overflow — confirms the defensive fix didn't regress the header that wasn't
+originally reported broken.
+

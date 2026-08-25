@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import { useAdminStore } from "@/lib/admin-store";
 import { useSuperAdminStore } from "@/store/useSuperAdminStore";
@@ -87,14 +88,15 @@ export function AdminSidebar({
         }`}
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#2563EB] font-black text-white text-lg shadow-sm">
-            A
-          </div>
+          <NextImage
+            src="/akshaya-logo.png"
+            alt="Akshaya Logo"
+            width={110}
+            height={32}
+            className="h-8 w-auto object-contain"
+          />
           {!isCollapsed && (
             <div className="min-w-0 transition-opacity duration-300">
-              <div className="font-extrabold text-[#111827] text-sm tracking-wider leading-tight truncate">
-                AKSHAYA
-              </div>
               <div className="text-[10px] text-[#2563EB] font-bold uppercase tracking-wider">
                 ADMIN CONSOLE
               </div>

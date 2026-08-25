@@ -79,8 +79,13 @@ export function BanquetHero() {
 
         {/* Input Field: White rounded input field with calendar icon */}
         <div className="mt-4 flex items-center gap-2.5 rounded-lg md:rounded-xl border border-gray-200 bg-white px-3 md:px-4 h-10 md:h-12 shadow-md w-full max-w-xs transition-shadow hover:shadow-lg">
+          <label htmlFor="banquet-hero-date" className="sr-only">
+            Select Event Date
+          </label>
           <Calendar className="h-4 w-4 md:h-5 md:w-5 text-[#6B7280] shrink-0" />
           <input
+            id="banquet-hero-date"
+            name="eventDate"
             type="date"
             value={date}
             onChange={(e) => handleDateSelect(e.target.value)}
